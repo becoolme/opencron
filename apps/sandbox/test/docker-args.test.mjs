@@ -35,6 +35,14 @@ test("Go cannot download modules or toolchains", () => {
   assert.ok(args.includes("GOTOOLCHAIN=local"));
 });
 
+test("Go builds within the process limit", () => {
+  // without these the compiler starts one worker per host CPU and hits --pids-limit on a large machine
+  const args = dockerArgs({ runtime: "go", name: "a", context: "{}" });
+  assert.ok(args.includes("GOFLAGS=-p=1"));
+  assert.ok(args.includes("GOMAXPROCS=1"));
+  assert.equal(flag(args, "--cpus"), "1");
+});
+
 test("the context travels as an env value, not through a shell", () => {
   const context = JSON.stringify({ job: "$(rm -rf /)" });
   const args = dockerArgs({ runtime: "python", name: "a", context });

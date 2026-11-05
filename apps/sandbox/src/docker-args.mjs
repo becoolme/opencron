@@ -64,6 +64,10 @@ const PROFILES = {
       GOPROXY: "off",
       GO111MODULE: "off",
       CGO_ENABLED: "0",
+      // Go sizes its build and its threads by the host's CPUs, not the container's one, and runs out of the 64
+      // processes the container may start; keep both to the single CPU the run is given
+      GOFLAGS: "-p=1",
+      GOMAXPROCS: "1",
     }),
   },
 };
