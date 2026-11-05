@@ -1,0 +1,39 @@
+{
+  "name": "opencron",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @opencron/web dev",
+    "build": "pnpm --filter @opencron/web build",
+    "deploy": "pnpm --filter @opencron/web deploy",
+    "test": "pnpm -r --if-present test && node scripts/sync-openuptime.mjs --check && node scripts/check-editions.mjs",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "db:init:local": "pnpm --filter @opencron/api db:init:local",
+    "db:init:remote": "pnpm --filter @opencron/api db:init:remote",
+    "db:migrate:local:0002": "pnpm --filter @opencron/api db:migrate:local:0002",
+    "db:migrate:remote:0002": "pnpm --filter @opencron/api db:migrate:remote:0002",
+    "db:migrate:local:0003": "pnpm --filter @opencron/api db:migrate:local:0003",
+    "db:migrate:remote:0003": "pnpm --filter @opencron/api db:migrate:remote:0003",
+    "db:migrate:local:0004": "pnpm --filter @opencron/api db:migrate:local:0004",
+    "db:migrate:remote:0004": "pnpm --filter @opencron/api db:migrate:remote:0004",
+    "db:migrate:local:0005": "pnpm --filter @opencron/api db:migrate:local:0005",
+    "db:migrate:remote:0005": "pnpm --filter @opencron/api db:migrate:remote:0005",
+    "db:migrate:postgres": "pnpm --filter @opencron/api db:migrate:postgres",
+    "db:migrate:local:0006": "pnpm --filter @opencron/api db:migrate:local:0006",
+    "db:migrate:remote:0006": "pnpm --filter @opencron/api db:migrate:remote:0006",
+    "test:postgres": "pnpm --filter @opencron/api test:postgres",
+    "test:smoke": "pnpm --filter @opencron/api test:smoke",
+    "preview": "pnpm --filter @opencron/web preview",
+    "dev:postgres": "pnpm --filter @opencron/web dev:postgres",
+    "build:postgres": "pnpm --filter @opencron/web build:postgres",
+    "deploy:postgres": "pnpm --filter @opencron/web deploy:postgres",
+    "sync:openuptime": "node scripts/sync-openuptime.mjs",
+    "check:shared": "node scripts/sync-openuptime.mjs --check",
+    "check:editions": "node scripts/check-editions.mjs"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  }
+}

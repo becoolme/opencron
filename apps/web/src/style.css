@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+.code-editor .cm-editor {
+  min-height: 320px;
+}
+
+.code-editor .cm-scroller {
+  overflow: auto;
+}

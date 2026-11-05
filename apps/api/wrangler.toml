@@ -1,0 +1,45 @@
+name = "opencron"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Self-hosting on Cloudflare: see docs/deploy.md. Everything below works as-is for local development.
+
+[vars]
+DB_PROVIDER = "d1"
+# Public URL of your deployment. Sign-in is accepted from its host (and from localhost).
+APP_URL = "http://localhost:5173"
+# "true" lets HTTP jobs and webhooks call private or internal addresses.
+ALLOW_PRIVATE_TARGETS = "false"
+
+[secrets]
+required = ["BETTER_AUTH_SECRET"]
+
+# Serve on your own domain:
+# [[routes]]
+# pattern = "cron.example.com"
+# custom_domain = true
+
+[triggers]
+crons = ["* * * * *"]
+
+[assets]
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+# Create the database with `wrangler d1 create opencron` and paste its id here before deploying.
+[[d1_databases]]
+binding = "DB"
+database_name = "opencron"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Local development uses a simulated namespace. Before deploying, create one with
+# `wrangler kv namespace create SCRIPT_KV` and add its `id` here.
+[[kv_namespaces]]
+binding = "SCRIPT_KV"
+
+# Script jobs run as Dynamic Workers (JavaScript only, see docs/scripts.md).
+[[worker_loaders]]
+binding = "LOADER"
+
+# Set with `wrangler secret put BETTER_AUTH_SECRET` before deploying.

@@ -1,0 +1,96 @@
+import { getDatabase } from "./database";
+import type { Env, JobRow } from "./types";
+import type { WorkerCode } from "./loader-types";
+import type { RunResult } from "./runner";
+
+type DynamicBindings = {
+  db?: unknown;
+  DB?: unknown;
+  D1?: unknown;
+  KV?: unknown;
+};
+
+export type LoaderExecutionContext = object;
+
+export function buildWorkerCode(
+  env: Env,
+  source: string,
+  ctx?: LoaderExecutionContext,
+  storageScope?: Pick<JobRow, "id" | "owner_user_id">,
+): WorkerCode {
+  const childEnv: DynamicBindings = {};
+
+  const ctxExports = (ctx as { readonly exports?: unknown } | undefined)?.exports;
+  if (ctxExports && storageScope?.owner_user_id) {
+    const exports = ctxExports as {
+      OpenCronTables(options: { props: { userId: string; jobId: number } }): unknown;
+      OpenCronDatabase(options: { props: { userId: string; jobId: number } }): unknown;
+      OpenCronD1(options: { props: { userId: string; jobId: number } }): unknown;
+      OpenCronKV(options: { props: { userId: string; jobId: number } }): unknown;
+    };
+    const props = { userId: storageScope.owner_user_id, jobId: storageScope.id };
+    childEnv.db = exports.OpenCronTables({ props });
+    childEnv.DB = exports.OpenCronDatabase({ props });
+    childEnv.D1 = exports.OpenCronD1({ props });
+    childEnv.KV = exports.OpenCronKV({ props });
+  }
+
+  return {
+    compatibilityDate: "2026-03-01",
+    compatibilityFlags: ["nodejs_compat"],
+    mainModule: "main.js",
+    modules: { "main.js": source },
+    // Sandboxed scripts can only reach explicitly provided capabilities.
+    globalOutbound: null,
+    // WorkerLoader and native D1 bindings are not serializable across isolates.
+    // Authentication secrets never enter the child isolate. DB is the legacy
+    // facade; D1 and KV are scoped RPC capabilities. Native bindings stay private.
+    env: childEnv,
+  };
+}
+
+export async function runScriptJob(env: Env, job: JobRow, ctx?: LoaderExecutionContext): Promise<RunResult> {
+  const started_at = Math.floor(Date.now() / 1000);
+  const t0 = Date.now();
+  let status_code: number | null = null;
+  let ok = false;
+  let error: string | null = null;
+  let response_snippet: string | null = null;
+
+  try {
+    if (!job.script) throw new Error("script is empty");
+    const handle = env.LOADER.get(
+      `job-${job.id}-v${job.script_version}`,
+      () => buildWorkerCode(env, job.script!, ctx, job),
+    );
+    const entrypoint = handle.getEntrypoint();
+    const req = new Request("https://opencron.internal/run", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      signal: AbortSignal.timeout(job.timeout_ms),
+      body: JSON.stringify({
+        jobId: job.id,
+        jobName: job.name,
+        scheduledAt: started_at,
+        invocation: "cron",
+      }),
+    });
+    const res = await entrypoint.fetch(req);
+    status_code = res.status;
+    ok = res.ok;
+    const text = await res.text();
+    response_snippet = text.slice(0, 500);
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
+  }
+
+  const duration_ms = Date.now() - t0;
+  const ok_int = ok ? 1 : 0;
+
+  await getDatabase(env).prepare(
+    `INSERT INTO executions (job_id, started_at, duration_ms, status_code, ok, error, response_snippet)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(job.id, started_at, duration_ms, status_code, ok_int, error, response_snippet).run();
+
+  return { started_at, duration_ms, status_code, ok, error, response_snippet };
+}

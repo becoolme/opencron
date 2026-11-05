@@ -1,0 +1,4 @@
+BETTER_AUTH_SECRET=replace-with-a-random-secret-of-at-least-32-characters
+
+# Only needed when using wrangler.postgres.toml (keep credentials out of Git).
+# DATABASE_URL=postgres://user:password@localhost:5432/opencron

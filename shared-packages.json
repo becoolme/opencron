@@ -1,0 +1,8 @@
+{
+  "$comment": "Packages vendored from openuptime. Edit them there, then run `pnpm sync:openuptime`. The cloud branch adds hosted-only packages from openuptime's cloud branch.",
+  "source": "../openuptime",
+  "packages": [
+    { "name": "kit", "ref": "origin/main" },
+    { "name": "mcp-rest", "ref": "origin/main" }
+  ]
+}

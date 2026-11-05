@@ -1,0 +1,10 @@
+-- Business tables exposed by src/script-tables.ts. Scope is enforced by the RPC facade.
+CREATE TABLE script_products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  price REAL NOT NULL DEFAULT 0,
+  available INTEGER NOT NULL DEFAULT 1 CHECK (available IN (0, 1))
+);
+CREATE INDEX script_products_scope_idx ON script_products(owner_user_id, job_id, id);

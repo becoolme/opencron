@@ -1,0 +1,37 @@
+{
+  "packages": {
+    "kit": {
+      "ref": "origin/main",
+      "commit": "4a02d75c2a1d016f686cf93cb0f6f4a47855e695",
+      "files": {
+        "package.json": "a12f77480531450bb1a07de1297f036a4b471ce52fc064243341c255b0fd13ae",
+        "src/netguard.ts": "15323245d2f92445849a85f46b6ea3512a94d76ea52b0f6ee323eaa8a3208f4b",
+        "src/outbound-proxy.test.ts": "b9bd88a3a624e6d1fc271be8c7d538001b073aec0b90213fc582baf3898c72d2",
+        "src/pinnedfetch.test.ts": "3d5aeb8408c49e778f4899ed19fe795b84f4900673660dededf32240e42f43e2",
+        "src/pinnedfetch.ts": "bdfcb793328fd3db88d8d22c4a16a3fbd2b2a176ba7c572a5d15985906c60966",
+        "src/redirect-cookies.test.ts": "e50e6f41034d1fe97ddb9abad865270b0bf525fad982437868162a5add7ca88e",
+        "src/selfcheck.ts": "84c4a56b861188fd6bbd24f2a5d8c492ffb190c804fb3e4d6c72b576603ef835",
+        "src/ttlcache.test.ts": "34a6ed7d876acdad60e875e4ca5b739931b5fe775c4cf0cd7632f5e00aa658bb",
+        "src/ttlcache.ts": "9a4a925e4938bbe62081375ed0672a50a3f7e15c90641ffea255cda11589d6e1",
+        "tsconfig.json": "fcaa80a9aa14b992d221caa17016e57cd23c16500008145f4ac39b4f3a9bad26",
+        "vitest.config.ts": "696ee9db122e94dfabc5035ca076de2c822653995f515058d0aa71e131683d8b"
+      }
+    },
+    "mcp-rest": {
+      "ref": "origin/main",
+      "commit": "4a02d75c2a1d016f686cf93cb0f6f4a47855e695",
+      "files": {
+        "README.md": "b36f8e42889d1fb9c2cf54305ab7c113dbd87b7abfcf22f054aea90580e59630",
+        "package.json": "089bb324dfb8e5aae60fed171eea3ea49e1cd09a4402ee5bef63ef89201b108d",
+        "src/hono.test.ts": "55a63e2053c01ee0d4ae095518877f99a369b5db5ac01ff24e0e977dd72db042",
+        "src/hono.ts": "ab2418d70bccc4defe30c11ce8092e543b0167a108bbba50fded89b811dc8a4d",
+        "src/index.ts": "4eca0e772666dd492b767813a84a03e795415c643e1c02d28125bbe997f9152c",
+        "src/oauth.ts": "4c4d4b24c940eaa2706ef56649d73dcd644c6704edf85331631946eded17e3ae",
+        "src/rpc.test.ts": "bc80c60cbae74db19de71bdce2ded527c598df267db5524f58c26cf0954df620",
+        "src/rpc.ts": "9bff9f6f30ae4a1592e76e0052146d361d7362d77d173579f90907bd5480ac47",
+        "tsconfig.json": "0a0c2cfb4e55ff9e0c0694d69305545f10aa5053b4e1db7a57c97b920e0bd9d4",
+        "vitest.config.ts": "7934d727fcbf0b50acf5341336dc4e749f9f80e8fb38084247984d198c1bcd4e"
+      }
+    }
+  }
+}
