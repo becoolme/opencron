@@ -53,10 +53,15 @@ describe("describeCron", () => {
     expect(describeCron(expr)).toBe(text);
   });
 
-  it("reads in Chinese", () => {
-    lang.value = "zh";
+  it("reads in other languages", () => {
+    lang.value = "zh-CN";
     expect(describeCron("0 3 * * *")).toBe("每天 03:00 UTC");
     expect(describeCron("15 2 * * 0")).toBe("每星期日 02:15 UTC");
+    lang.value = "ja";
+    expect(describeCron("0 3 * * *")).toBe("毎日 03:00 UTC");
+    lang.value = "ko";
+    expect(describeCron("0 3 * * *")).toBe("매일 03:00 UTC");
+    lang.value = "en";
   });
 
   it("gives up on shapes it doesn't know", () => {

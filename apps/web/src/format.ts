@@ -1,5 +1,5 @@
 import parser from "cron-parser";
-import { lang, t } from "./i18n";
+import { intlLocale, t } from "./i18n";
 
 export const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
@@ -7,9 +7,7 @@ export function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function locale(): string {
-  return lang.value === "zh" ? "zh-CN" : "en-GB";
-}
+const locale = intlLocale;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -31,8 +29,8 @@ export function dayLabel(unixSec: number): string {
   const d = new Date(unixSec * 1000);
   const today = new Date();
   const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  if (d.toDateString() === today.toDateString()) return t("Today", "今天");
-  if (d.toDateString() === tomorrow.toDateString()) return t("Tomorrow", "明天");
+  if (d.toDateString() === today.toDateString()) return t("Today");
+  if (d.toDateString() === tomorrow.toDateString()) return t("Tomorrow");
   const weekday = d.toLocaleDateString(locale(), { weekday: "short" });
   return `${weekday} ${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
@@ -95,26 +93,26 @@ export function describeCron(expr: string): string | null {
   const [mi, h, dom, mon, dow] = fields;
   const everyDay = dom === "*" && mon === "*" && dow === "*";
 
-  if (fields.every((f) => f === "*")) return t("Every minute", "每分钟");
+  if (fields.every((f) => f === "*")) return t("Every minute");
   const step = /^\*\/(\d+)$/;
   if (step.test(mi) && h === "*" && everyDay) {
     const n = mi.match(step)![1];
-    return t(`Every ${n} minutes`, `每 ${n} 分钟`);
+    return t("Every {n} minutes", { n });
   }
   if (isNum(mi) && h === "*" && everyDay) {
-    return mi === "0" ? t("Every hour, on the hour", "每小时整点") : t(`Every hour at :${pad(Number(mi))}`, `每小时第 ${Number(mi)} 分`);
+    return mi === "0" ? t("Every hour, on the hour") : t("Every hour at :{minute}", { minute: pad(Number(mi)) });
   }
   if (isNum(mi) && step.test(h) && everyDay) {
     const n = h.match(step)![1];
-    return t(`Every ${n} hours at :${pad(Number(mi))}`, `每 ${n} 小时，第 ${Number(mi)} 分`);
+    return t("Every {n} hours at :{minute}", { n, minute: pad(Number(mi)) });
   }
   if (!isNum(mi) || !isNum(h)) return null;
   const at = utcTime(h, mi);
-  if (everyDay) return t(`Every day at ${at}`, `每天 ${at}`);
-  if (dom === "*" && mon === "*" && dow === "1-5") return t(`Weekdays at ${at}`, `工作日 ${at}`);
+  if (everyDay) return t("Every day at {time}", { time: at });
+  if (dom === "*" && mon === "*" && dow === "1-5") return t("Weekdays at {time}", { time: at });
   if (dom === "*" && mon === "*" && isNum(dow)) {
-    return t(`Every ${weekdayName(Number(dow))} at ${at}`, `每${weekdayName(Number(dow))} ${at}`);
+    return t("Every {day} at {time}", { day: weekdayName(Number(dow)), time: at });
   }
-  if (isNum(dom) && mon === "*" && dow === "*") return t(`Day ${dom} of every month at ${at}`, `每月 ${dom} 日 ${at}`);
+  if (isNum(dom) && mon === "*" && dow === "*") return t("Day {day} of every month at {time}", { day: dom, time: at });
   return null;
 }

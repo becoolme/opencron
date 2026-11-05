@@ -100,25 +100,25 @@ export type FormErrors = Partial<Record<"name" | "url" | "cron" | "headers" | "s
 
 export function validateForm(form: JobForm): FormErrors {
   const errors: FormErrors = {};
-  if (!form.name.trim()) errors.name = t("Give the job a name.", "请填写任务名称。");
+  if (!form.name.trim()) errors.name = t("Give the job a name.");
   if (!validCron(form.cron)) {
-    errors.cron = t("Use five fields: minute, hour, day of month, month, day of week.", "需要五个字段：分 时 日 月 周。");
+    errors.cron = t("Use five fields: minute, hour, day of month, month, day of week.");
   }
   if (!Number.isInteger(form.timeout_ms) || form.timeout_ms < TIMEOUT_MIN || form.timeout_ms > TIMEOUT_MAX) {
-    errors.timeout_ms = t("Choose a timeout between 1 and 60 seconds.", "超时需在 1 到 60 秒之间。");
+    errors.timeout_ms = t("Choose a timeout between 1 and 60 seconds.");
   }
   if (form.type === "url") {
-    if (!/^https?:\/\/\S+$/i.test(form.url.trim())) errors.url = t("Enter a URL starting with http:// or https://.", "请填写以 http:// 或 https:// 开头的地址。");
+    if (!/^https?:\/\/\S+$/i.test(form.url.trim())) errors.url = t("Enter a URL starting with http:// or https://.");
     const keys = form.headers.map((row) => row.key.trim()).filter(Boolean);
     if (form.headers.some((row) => !row.key.trim() && row.value.trim())) {
-      errors.headers = t("Every header value needs a name.", "每个请求头都需要名称。");
+      errors.headers = t("Every header value needs a name.");
     } else if (keys.some((key) => !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(key))) {
-      errors.headers = t("Header names can't contain spaces or special characters.", "请求头名称不能包含空格或特殊字符。");
+      errors.headers = t("Header names can't contain spaces or special characters.");
     } else if (new Set(keys.map((key) => key.toLowerCase())).size !== keys.length) {
-      errors.headers = t("Each header name can appear only once.", "请求头名称不能重复。");
+      errors.headers = t("Each header name can appear only once.");
     }
   } else if (!form.script.trim()) {
-    errors.script = t("The script is empty.", "脚本为空。");
+    errors.script = t("The script is empty.");
   }
   return errors;
 }

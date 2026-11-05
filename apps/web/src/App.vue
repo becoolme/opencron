@@ -50,14 +50,14 @@ function showToast(text: string, kind: "ok" | "fail" | "info" = "info"): void {
 }
 
 const crumbs = computed(() => {
-  const jobs = { label: t("Cron jobs", "定时任务"), href: href.jobs };
+  const jobs = { label: t("Cron jobs"), href: href.jobs };
   const r = route.value;
   switch (r.name) {
-    case "runs": return [{ label: t("Runs", "运行记录") }];
-    case "new": return [jobs, { label: t("New job", "新建任务") }];
+    case "runs": return [{ label: t("Runs") }];
+    case "new": return [jobs, { label: t("New job") }];
     case "job": return [jobs, { label: jobsById.value.get(r.id)?.name ?? `#${r.id}` }];
-    case "edit": return [jobs, { label: jobsById.value.get(r.id)?.name ?? `#${r.id}`, href: href.job(r.id) }, { label: t("Edit", "编辑") }];
-    default: return [{ label: t("Cron jobs", "定时任务") }];
+    case "edit": return [jobs, { label: jobsById.value.get(r.id)?.name ?? `#${r.id}`, href: href.job(r.id) }, { label: t("Edit") }];
+    default: return [{ label: t("Cron jobs") }];
   }
 });
 
@@ -76,17 +76,17 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <main v-if="sessionPending" class="boot muted">{{ t("Loading OpenCron…", "正在加载 OpenCron…") }}</main>
+  <main v-if="sessionPending" class="boot muted">{{ t("Loading OpenCron…") }}</main>
 
   <AuthPanel v-else-if="!session" @authenticated="sessionState.refetch()" />
 
   <AppShell v-else :user="session.user" :crumbs="crumbs" @sign-out="signOut">
     <p v-if="loadError && loaded" class="alert" role="alert">
-      {{ t("Couldn't load your jobs:", "无法加载任务：") }} {{ loadError }}
-      <button type="button" class="btn sm" style="margin-left: 8px" @click="refresh()">{{ t("Retry", "重试") }}</button>
+      {{ t("Couldn't load your jobs:") }} {{ loadError }}
+      <button type="button" class="btn sm" style="margin-left: 8px" @click="refresh()">{{ t("Retry") }}</button>
     </p>
 
-    <p v-if="!loaded" class="muted" style="padding: 40px 0">{{ t("Loading…", "加载中…") }}</p>
+    <p v-if="!loaded" class="muted" style="padding: 40px 0">{{ t("Loading…") }}</p>
     <template v-else>
       <JobsList v-if="route.name === 'jobs'" />
       <RunsPage v-else-if="route.name === 'runs'" />
@@ -99,7 +99,7 @@ async function signOut(): Promise<void> {
   <div class="toast-host" aria-live="polite">
     <div v-if="toast" :key="toast.id" class="toast" :class="toast.kind" role="status">
       {{ toast.text }}
-      <button type="button" class="toast-x" :aria-label="t('Dismiss', '关闭')" @click="toast = null">×</button>
+      <button type="button" class="toast-x" :aria-label="t('Dismiss')" @click="toast = null">×</button>
     </div>
   </div>
 </template>

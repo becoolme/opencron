@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { lang, setLang, t } from "../i18n";
+import { t } from "../i18n";
+import LangSwitch from "./LangSwitch.vue";
 import { localZone } from "../format";
 import { href, route } from "../router";
 import { jobs } from "../store";
@@ -38,7 +39,7 @@ function closeMenu(): void {
           class="btn sm menu-btn"
           :aria-expanded="menuOpen"
           aria-controls="side-nav"
-          :aria-label="t('Menu', '菜单')"
+          :aria-label="t('Menu')"
           @click="menuOpen = !menuOpen"
         >
           <Icon :name="menuOpen ? 'x' : 'list'" />
@@ -46,11 +47,11 @@ function closeMenu(): void {
       </div>
       <nav id="side-nav" class="side-nav" @click="menuOpen = false">
         <a class="nav" :class="{ on: onJobs }" :href="href.jobs" :aria-current="onJobs ? 'page' : undefined">
-          <Icon name="list" /><span>{{ t("Cron jobs", "定时任务") }}</span><em>{{ jobs.length }}</em>
+          <Icon name="list" /><span>{{ t("Cron jobs") }}</span><em>{{ jobs.length }}</em>
         </a>
         <a class="nav" :class="{ on: !onJobs }" :href="href.runs" :aria-current="!onJobs ? 'page' : undefined">
-          <Icon name="activity" /><span>{{ t("Runs", "运行记录") }}</span>
-          <em v-if="failing" class="bad" :title="t('Jobs whose last run failed', '上次运行失败的任务')">{{ failing }}</em>
+          <Icon name="activity" /><span>{{ t("Runs") }}</span>
+          <em v-if="failing" class="bad" :title="t('Jobs whose last run failed')">{{ failing }}</em>
         </a>
       </nav>
       <div class="side-foot">
@@ -58,7 +59,7 @@ function closeMenu(): void {
           <span class="ellipsis" style="font-weight: 500; font-size: 14px">{{ user.name }}</span>
           <small class="ellipsis faint" style="font-size: 12px">{{ user.email }}</small>
         </div>
-        <button type="button" class="btn sm" :title="t('Sign out', '退出登录')" :aria-label="t('Sign out', '退出登录')" @click="emit('signOut')">
+        <button type="button" class="btn sm" :title="t('Sign out')" :aria-label="t('Sign out')" @click="emit('signOut')">
           <Icon name="logout" />
         </button>
       </div>
@@ -74,11 +75,8 @@ function closeMenu(): void {
           </template>
         </div>
         <div style="display: flex; gap: 8px; align-items: center">
-          <span class="chip" :title="t('Times are shown in this time zone. Cron expressions run in UTC.', '时间按此时区显示，cron 表达式按 UTC 运行。')">{{ localZone }}</span>
-          <div class="seg" role="group" :aria-label="t('Language', '语言')" style="padding: 2px">
-            <button type="button" :class="{ on: lang === 'en' }" style="height: 26px; padding: 0 9px; font-size: 12.5px" @click="setLang('en')">EN</button>
-            <button type="button" :class="{ on: lang === 'zh' }" style="height: 26px; padding: 0 9px; font-size: 12.5px" @click="setLang('zh')">中</button>
-          </div>
+          <span class="chip" :title="t('Times are shown in this time zone. Cron expressions run in UTC.')">{{ localZone }}</span>
+          <LangSwitch />
         </div>
       </div>
       <main class="shell-main">

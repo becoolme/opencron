@@ -52,7 +52,7 @@ function lastDuration(job: Job): string {
 function target(job: Job): string {
   if (job.type === "url") return job.url ?? "";
   const runtime = RUNTIME_LABEL[job.runtime];
-  return `${runtime} · ${t("script", "脚本")} v${job.script_version}`;
+  return `${runtime} · ${t("script")} v${job.script_version}`;
 }
 
 function onKey(event: KeyboardEvent): void {
@@ -77,15 +77,12 @@ onBeforeUnmount(() => {
 <template>
   <div class="hd">
     <div style="max-width: 560px">
-      <span class="eyebrow">{{ t(`${jobs.length} jobs · cron in UTC`, `${jobs.length} 个任务 · cron 按 UTC`) }}</span>
-      <h1 class="serif">{{ t("Cron jobs", "定时任务") }}</h1>
+      <span class="eyebrow">{{ t("{n} jobs · cron in UTC", { n: jobs.length }) }}</span>
+      <h1 class="serif">{{ t("Cron jobs") }}</h1>
       <p class="muted" style="margin: 8px 0 18px; font-size: 15px">
-        {{ t(
-          "Call an HTTP endpoint or run a script on a schedule. Failed runs notify the channels you set on each job.",
-          "按计划调用 HTTP 端点或运行脚本。运行失败时，会通知任务上设置的告警渠道。",
-        ) }}
+        {{ t("Call an HTTP endpoint or run a script on a schedule. Failed runs notify the channels you set on each job.") }}
       </p>
-      <a class="btn primary" :href="href.newJob"><Icon name="plus" />{{ t("New job", "新建任务") }}</a>
+      <a class="btn primary" :href="href.newJob"><Icon name="plus" />{{ t("New job") }}</a>
     </div>
     <HeaderArt :failed="failedJobs.length > 0" />
   </div>
@@ -95,55 +92,55 @@ onBeforeUnmount(() => {
     <div style="flex: 1; min-width: 220px; font-size: 14.5px">
       <b style="font-weight: 600">
         {{ failedJobs.length === 1
-          ? t(`${failedJobs[0].name} failed on its last run`, `${failedJobs[0].name} 上次运行失败`)
-          : t(`${failedJobs.length} jobs failed on their last run`, `${failedJobs.length} 个任务上次运行失败`) }}
+          ? t("{name} failed on its last run", { name: failedJobs[0].name })
+          : t("{n} jobs failed on their last run", { n: failedJobs.length }) }}
       </b>
-      <span class="muted"> · {{ t("last run", "最近一次") }} {{ relative(failedJobs[0].last_run_at, now) }}</span>
+      <span class="muted"> · {{ t("last run") }} {{ relative(failedJobs[0].last_run_at, now) }}</span>
     </div>
-    <a v-if="failedJobs.length === 1" class="btn sm" :href="href.job(failedJobs[0].id)">{{ t("Open job", "查看任务") }}</a>
-    <button v-else type="button" class="btn sm" @click="filter = 'failed'">{{ t("Show failed", "只看失败") }}</button>
+    <a v-if="failedJobs.length === 1" class="btn sm" :href="href.job(failedJobs[0].id)">{{ t("Open job") }}</a>
+    <button v-else type="button" class="btn sm" @click="filter = 'failed'">{{ t("Show failed") }}</button>
   </div>
 
   <div class="stats">
     <div class="card stat">
-      <div class="muted" style="font-size: 13px">{{ t("Enabled jobs", "启用中的任务") }}</div>
+      <div class="muted" style="font-size: 13px">{{ t("Enabled jobs") }}</div>
       <div class="v">{{ jobs.length - pausedJobs.length }}<small>/ {{ jobs.length }}</small></div>
-      <div class="s">{{ t(`${pausedJobs.length} paused`, `${pausedJobs.length} 个已暂停`) }}</div>
+      <div class="s">{{ t("{n} paused", { n: pausedJobs.length }) }}</div>
     </div>
     <div class="card stat">
-      <div class="muted" style="font-size: 13px">{{ t("Runs · 24h", "近 24 小时运行") }}</div>
+      <div class="muted" style="font-size: 13px">{{ t("Runs · 24h") }}</div>
       <div class="v">{{ day.count.toLocaleString() }}<small v-if="day.capped">+</small></div>
       <div class="s" :style="nextRun ? 'color: var(--ok)' : ''">
-        {{ nextRun ? t(`Next: ${relative(nextRun, now)}`, `下一次：${relative(nextRun, now)}`) : t("Nothing scheduled", "暂无计划") }}
+        {{ nextRun ? t("Next: {when}", { when: relative(nextRun, now) }) : t("Nothing scheduled") }}
       </div>
     </div>
     <div class="card stat">
-      <div class="muted" style="font-size: 13px">{{ t("Success rate · 24h", "成功率 · 24h") }}</div>
+      <div class="muted" style="font-size: 13px">{{ t("Success rate · 24h") }}</div>
       <div class="v">{{ day.rate == null ? "—" : day.rate.toFixed(day.rate === 100 ? 0 : 1) }}<small v-if="day.rate != null">%</small></div>
-      <div class="s" :style="day.failed ? 'color: var(--fail)' : ''">{{ t(`${day.failed} failed`, `${day.failed} 次失败`) }}</div>
+      <div class="s" :style="day.failed ? 'color: var(--fail)' : ''">{{ t("{n} failed", { n: day.failed }) }}</div>
     </div>
     <div class="card stat">
-      <div class="muted" style="font-size: 13px">{{ t("Average duration · 24h", "平均耗时 · 24h") }}</div>
+      <div class="muted" style="font-size: 13px">{{ t("Average duration · 24h") }}</div>
       <div class="v">{{ duration(day.avg) }}</div>
-      <div class="s">{{ day.capped ? t(`From the latest ${RECENT_LIMIT} runs`, `基于最近 ${RECENT_LIMIT} 次运行`) : t("All runs in 24 hours", "24 小时内全部运行") }}</div>
+      <div class="s">{{ day.capped ? t("From the latest {n} runs", { n: RECENT_LIMIT }) : t("All runs in 24 hours") }}</div>
     </div>
   </div>
 
   <div class="toolbar">
     <div class="ftabs" role="tablist">
       <button type="button" role="tab" class="ftab" :class="{ on: filter === 'all' }" :aria-selected="filter === 'all'" @click="filter = 'all'">
-        {{ t("All", "全部") }}<em>{{ jobs.length }}</em>
+        {{ t("All") }}<em>{{ jobs.length }}</em>
       </button>
       <button type="button" role="tab" class="ftab" :class="{ on: filter === 'failed' }" :aria-selected="filter === 'failed'" @click="filter = 'failed'">
-        {{ t("Failed", "失败") }}<em>{{ failedJobs.length }}</em>
+        {{ t("Failed") }}<em>{{ failedJobs.length }}</em>
       </button>
       <button type="button" role="tab" class="ftab" :class="{ on: filter === 'paused' }" :aria-selected="filter === 'paused'" @click="filter = 'paused'">
-        {{ t("Paused", "已暂停") }}<em>{{ pausedJobs.length }}</em>
+        {{ t("Paused") }}<em>{{ pausedJobs.length }}</em>
       </button>
     </div>
     <label class="search">
       <Icon name="search" />
-      <input ref="search" v-model="query" type="search" :aria-label="t('Search jobs', '搜索任务')" :placeholder="t('Search by name or URL', '搜索任务名称或 URL')" />
+      <input ref="search" v-model="query" type="search" :aria-label="t('Search jobs')" :placeholder="t('Search by name or URL')" />
       <kbd class="mono key" aria-hidden="true">/</kbd>
     </label>
   </div>
@@ -151,8 +148,8 @@ onBeforeUnmount(() => {
   <div class="card jobs-wrap">
     <div class="jobs-table">
       <div class="row th" style="min-height: 44px; border-top: 0; background: var(--surface); border-radius: 15px 15px 0 0">
-        <span>{{ t("Job", "任务") }}</span><span>{{ t("Schedule", "计划") }}</span><span>{{ t("Next run", "下次运行") }}</span>
-        <span>{{ t("Last 20", "最近 20 次") }}</span><span>{{ t("Last result", "上次结果") }}</span><span style="text-align: right">{{ t("Took", "耗时") }}</span>
+        <span>{{ t("Job") }}</span><span>{{ t("Schedule") }}</span><span>{{ t("Next run") }}</span>
+        <span>{{ t("Last 20") }}</span><span>{{ t("Last result") }}</span><span style="text-align: right">{{ t("Took") }}</span>
       </div>
       <a v-for="job in visible" :key="job.id" class="row" :href="href.job(job.id)">
         <span style="display: flex; align-items: center; gap: 12px; min-width: 0">
@@ -171,9 +168,9 @@ onBeforeUnmount(() => {
             <span class="mono" style="font-size: 13.5px">{{ relative(job.next_run_at, now) }}</span>
             <small class="faint" style="font-size: 12px">{{ dayLabel(job.next_run_at) }} {{ clock(job.next_run_at) }}</small>
           </template>
-          <span v-else class="faint" style="font-size: 13.5px">{{ t("Paused", "已暂停") }}</span>
+          <span v-else class="faint" style="font-size: 13.5px">{{ t("Paused") }}</span>
         </span>
-        <span class="bars" role="img" :aria-label="t('Last 20 runs', '最近 20 次运行')">
+        <span class="bars" role="img" :aria-label="t('Last 20 runs')">
           <i v-for="(c, i) in bars(job)" :key="i" :class="c"></i>
         </span>
         <span><StatusPill :state="jobState(job)" /></span>
@@ -181,19 +178,19 @@ onBeforeUnmount(() => {
       </a>
 
       <div v-if="loaded && jobs.length === 0" class="empty">
-        <p class="serif" style="font-size: 24px; margin: 0">{{ t("No jobs yet", "还没有任务") }}</p>
-        <p class="muted" style="margin: 6px 0 16px">{{ t("Create one to call a URL or run a script on a schedule.", "新建一个任务，按计划调用 URL 或运行脚本。") }}</p>
-        <a class="btn primary" :href="href.newJob"><Icon name="plus" />{{ t("New job", "新建任务") }}</a>
+        <p class="serif" style="font-size: 24px; margin: 0">{{ t("No jobs yet") }}</p>
+        <p class="muted" style="margin: 6px 0 16px">{{ t("Create one to call a URL or run a script on a schedule.") }}</p>
+        <a class="btn primary" :href="href.newJob"><Icon name="plus" />{{ t("New job") }}</a>
       </div>
       <div v-else-if="loaded && visible.length === 0" class="empty muted">
-        {{ t("No jobs match.", "没有匹配的任务。") }}
-        <button type="button" class="link" style="background: none; border: 0" @click="query = ''; filter = 'all'">{{ t("Clear filters", "清除筛选") }}</button>
+        {{ t("No jobs match.") }}
+        <button type="button" class="link" style="background: none; border: 0" @click="query = ''; filter = 'all'">{{ t("Clear filters") }}</button>
       </div>
-      <div v-else-if="!loaded" class="empty muted">{{ t("Loading…", "加载中…") }}</div>
+      <div v-else-if="!loaded" class="empty muted">{{ t("Loading…") }}</div>
 
       <div v-if="jobs.length" class="foot faint">
-        <span>{{ t(`Showing ${visible.length} of ${jobs.length} jobs`, `显示 ${visible.length} / ${jobs.length} 个任务`) }}</span>
-        <span class="mono legend"><i class="ok"></i>{{ t("success", "成功") }} <i class="f"></i>{{ t("failed", "失败") }} <i class="n"></i>{{ t("no run", "无记录") }}</span>
+        <span>{{ t("Showing {shown} of {total} jobs", { shown: visible.length, total: jobs.length }) }}</span>
+        <span class="mono legend"><i class="ok"></i>{{ t("success") }} <i class="f"></i>{{ t("failed") }} <i class="n"></i>{{ t("no run") }}</span>
       </div>
     </div>
   </div>

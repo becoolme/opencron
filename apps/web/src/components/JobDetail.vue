@@ -67,7 +67,7 @@ async function runNow(): Promise<void> {
   error.value = "";
   try {
     const { result } = await api<{ result: Execution }>(`/jobs/${props.id}/run`, { method: "POST" });
-    emit("toast", result.ok ? t(`Run succeeded in ${duration(result.duration_ms)}`, `运行成功，耗时 ${duration(result.duration_ms)}`) : t("Run failed", "运行失败"), result.ok ? "ok" : "fail");
+    emit("toast", result.ok ? t("Run succeeded in {time}", { time: duration(result.duration_ms) }) : t("Run failed"), result.ok ? "ok" : "fail");
     await Promise.all([refresh(), loadRuns()]);
   } catch (caught) {
     error.value = errorText(caught);
@@ -90,12 +90,12 @@ async function toggle(): Promise<void> {
 }
 
 async function remove(): Promise<void> {
-  if (!job.value || !confirm(t(`Delete "${job.value.name}" and its run history?`, `删除「${job.value.name}」及其运行记录？`))) return;
+  if (!job.value || !confirm(t('Delete "{name}" and its run history?', { name: job.value.name }))) return;
   busy.value = "delete";
   try {
     await api(`/jobs/${props.id}`, { method: "DELETE" });
     await refresh();
-    emit("toast", t("Job deleted", "任务已删除"));
+    emit("toast", t("Job deleted"));
     go(href.jobs);
   } catch (caught) {
     error.value = errorText(caught);
@@ -134,13 +134,13 @@ const upcoming = computed(() => (job.value?.enabled ? nextRuns(job.value.cron, 5
 
 const kindLabel = computed(() => {
   if (!job.value) return "";
-  if (job.value.type === "url") return t(`HTTP job · ${job.value.method}`, `HTTP 任务 · ${job.value.method}`);
+  if (job.value.type === "url") return t("HTTP job · {method}", { method: job.value.method });
   const runtime = RUNTIME_LABEL[job.value.runtime];
-  return t(`Script job · ${runtime}`, `脚本任务 · ${runtime}`);
+  return t("Script job · {runtime}", { runtime });
 });
 
 function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name: string; detail: string } {
-  const names: Record<string, string> = { http: "Webhook", lark: t("Lark", "飞书"), telegram: "Telegram", dingtalk: t("DingTalk", "钉钉"), slack: "Slack", discord: "Discord" };
+  const names: Record<string, string> = { http: "Webhook", lark: t("Lark"), telegram: "Telegram", dingtalk: t("DingTalk"), slack: "Slack", discord: "Discord" };
   if (target.type === "telegram") return { name: names.telegram, detail: `chat ${target.chat_id}` };
   let host = target.url;
   try {
@@ -154,12 +154,12 @@ function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name
 
 <template>
   <div v-if="!job" class="card" style="padding: 40px; text-align: center">
-    <p class="serif" style="font-size: 24px; margin: 0">{{ t("Job not found", "找不到这个任务") }}</p>
-    <p class="muted"><a class="link" :href="href.jobs">{{ t("Back to cron jobs", "返回定时任务") }}</a></p>
+    <p class="serif" style="font-size: 24px; margin: 0">{{ t("Job not found") }}</p>
+    <p class="muted"><a class="link" :href="href.jobs">{{ t("Back to cron jobs") }}</a></p>
   </div>
 
   <template v-else>
-    <a :href="href.jobs" class="muted back"><Icon name="back" />{{ t("Cron jobs", "定时任务") }}</a>
+    <a :href="href.jobs" class="muted back"><Icon name="back" />{{ t("Cron jobs") }}</a>
 
     <div class="hd" style="align-items: flex-start">
       <div style="min-width: 0; flex: 1 1 420px">
@@ -178,11 +178,11 @@ function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name
         </div>
         <div class="actions">
           <button type="button" class="btn" :disabled="busy !== ''" @click="toggle">
-            <Icon :name="job.enabled ? 'pause' : 'play'" />{{ job.enabled ? t("Pause", "暂停") : t("Resume", "启用") }}
+            <Icon :name="job.enabled ? 'pause' : 'play'" />{{ job.enabled ? t("Pause") : t("Resume") }}
           </button>
-          <a class="btn" :href="href.edit(job.id)"><Icon name="edit" />{{ t("Edit", "编辑") }}</a>
+          <a class="btn" :href="href.edit(job.id)"><Icon name="edit" />{{ t("Edit") }}</a>
           <button type="button" class="btn primary" :disabled="busy !== ''" @click="runNow">
-            <Icon name="play" />{{ busy === "run" ? t("Running…", "运行中…") : t("Run now", "立即运行") }}
+            <Icon name="play" />{{ busy === "run" ? t("Running…") : t("Run now") }}
           </button>
         </div>
       </div>
@@ -193,23 +193,23 @@ function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name
 
     <div class="stats">
       <div class="card stat">
-        <div class="muted" style="font-size: 13px">{{ t(`Success rate · last ${stats.count}`, `成功率 · 最近 ${stats.count} 次`) }}</div>
+        <div class="muted" style="font-size: 13px">{{ t("Success rate · last {n}", { n: stats.count }) }}</div>
         <div class="v">{{ stats.rate == null ? "—" : stats.rate.toFixed(stats.rate === 100 ? 0 : 1) }}<small v-if="stats.rate != null">%</small></div>
-        <div class="s" :style="stats.failed ? 'color: var(--fail)' : ''">{{ t(`${stats.failed} failed`, `${stats.failed} 次失败`) }}</div>
+        <div class="s" :style="stats.failed ? 'color: var(--fail)' : ''">{{ t("{n} failed", { n: stats.failed }) }}</div>
       </div>
       <div class="card stat">
-        <div class="muted" style="font-size: 13px">{{ t("Average duration", "平均耗时") }}</div>
+        <div class="muted" style="font-size: 13px">{{ t("Average duration") }}</div>
         <div class="v">{{ duration(stats.avg) }}</div>
-        <div class="s">{{ t(`Timeout ${duration(job.timeout_ms)}`, `超时上限 ${duration(job.timeout_ms)}`) }}</div>
+        <div class="s">{{ t("Timeout {time}", { time: duration(job.timeout_ms) }) }}</div>
       </div>
       <div class="card stat">
-        <div class="muted" style="font-size: 13px">{{ t("Last success", "上次成功") }}</div>
+        <div class="muted" style="font-size: 13px">{{ t("Last success") }}</div>
         <div class="v" style="font-size: 24px">{{ stats.lastOk ? relative(stats.lastOk) : "—" }}</div>
-        <div class="s">{{ stats.lastOk ? shortDateTime(stats.lastOk) : t("None in loaded runs", "已加载的记录中没有") }}</div>
+        <div class="s">{{ stats.lastOk ? shortDateTime(stats.lastOk) : t("None in loaded runs") }}</div>
       </div>
       <div class="card stat">
-        <div class="muted" style="font-size: 13px">{{ t("Next run", "下次运行") }}</div>
-        <div class="v" style="font-size: 24px">{{ job.enabled ? relative(job.next_run_at) : t("Paused", "已暂停") }}</div>
+        <div class="muted" style="font-size: 13px">{{ t("Next run") }}</div>
+        <div class="v" style="font-size: 24px">{{ job.enabled ? relative(job.next_run_at) : t("Paused") }}</div>
         <div class="s">{{ job.enabled ? shortDateTime(job.next_run_at) : "—" }}</div>
       </div>
     </div>
@@ -217,13 +217,13 @@ function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name
     <div class="cols">
       <div class="main-col">
         <section class="card pad">
-          <h3 class="serif">{{ t("Duration per run", "每次运行的耗时") }}</h3>
+          <h3 class="serif">{{ t("Duration per run") }}</h3>
           <div v-if="chart.bars.length" class="chart" :class="{ relaxed: !chart.atTimeout }">
-            <span v-if="chart.atTimeout" class="mono limit">{{ t(`timeout ${duration(job.timeout_ms)}`, `超时 ${duration(job.timeout_ms)}`) }}</span>
-            <span v-else class="mono limit">{{ t(`top ${duration(Math.round(chart.scale))} · timeout ${duration(job.timeout_ms)}`, `顶部 ${duration(Math.round(chart.scale))} · 超时 ${duration(job.timeout_ms)}`) }}</span>
+            <span v-if="chart.atTimeout" class="mono limit">{{ t("timeout {time}", { time: duration(job.timeout_ms) }) }}</span>
+            <span v-else class="mono limit">{{ t("top {top} · timeout {time}", { top: duration(Math.round(chart.scale)), time: duration(job.timeout_ms) }) }}</span>
             <span v-for="bar in chart.bars" :key="bar.id" class="col" :title="bar.tip"><i :class="{ f: bar.f }" :style="{ height: bar.h }"></i></span>
           </div>
-          <p v-else class="muted" style="margin: 14px 0 0; font-size: 14px">{{ t("No runs yet. Run it now to see the result here.", "还没有运行记录。点「立即运行」看看结果。") }}</p>
+          <p v-else class="muted" style="margin: 14px 0 0; font-size: 14px">{{ t("No runs yet. Run it now to see the result here.") }}</p>
           <div v-if="chart.bars.length" class="mono faint" style="display: flex; justify-content: space-between; font-size: 11.5px; margin-top: 9px">
             <span>{{ shortDateTime(runs[Math.min(59, runs.length - 1)].started_at) }}</span><span>{{ shortDateTime(runs[0].started_at) }}</span>
           </div>
@@ -231,7 +231,7 @@ function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name
 
         <section v-if="latest" class="card pad">
           <div class="sect-head">
-            <h3 class="serif">{{ t("Latest output", "最近一次输出") }}</h3>
+            <h3 class="serif">{{ t("Latest output") }}</h3>
             <span class="mono faint" style="font-size: 12.5px">{{ shortDateTime(latest.started_at, true) }}</span>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px">
@@ -240,14 +240,14 @@ function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name
           </div>
           <pre v-if="latest.error" class="dark-pre" style="color: #f3b4b4">{{ latest.error }}</pre>
           <pre v-if="latest.response_snippet" class="dark-pre" :style="latest.error ? 'margin-top: 10px' : ''">{{ latest.response_snippet }}</pre>
-          <p v-if="!latest.error && !latest.response_snippet" class="faint" style="margin: 0; font-size: 13.5px">{{ t("The run produced no output.", "这次运行没有输出。") }}</p>
-          <p class="faint" style="margin: 10px 0 0; font-size: 12.5px">{{ t("The first 500 characters of the response or stdout are kept.", "保留响应或标准输出的前 500 个字符。") }}</p>
+          <p v-if="!latest.error && !latest.response_snippet" class="faint" style="margin: 0; font-size: 13.5px">{{ t("The run produced no output.") }}</p>
+          <p class="faint" style="margin: 10px 0 0; font-size: 12.5px">{{ t("The first 500 characters of the response or stdout are kept.") }}</p>
         </section>
 
         <section class="card pad runs-wrap">
-          <div class="sect-head"><h3 class="serif">{{ t("Runs", "运行记录") }}</h3></div>
+          <div class="sect-head"><h3 class="serif">{{ t("Runs") }}</h3></div>
           <div class="runs-table">
-            <div class="rr th"><span>{{ t("Started", "开始时间") }}</span><span>{{ t("Result", "结果") }}</span><span>{{ t("Code", "状态码") }}</span><span>{{ t("Took", "耗时") }}</span><span>{{ t("Detail", "说明") }}</span></div>
+            <div class="rr th"><span>{{ t("Started") }}</span><span>{{ t("Result") }}</span><span>{{ t("Code") }}</span><span>{{ t("Took") }}</span><span>{{ t("Detail") }}</span></div>
             <div v-for="run in runs" :key="run.id" class="rr">
               <span class="mono">{{ shortDateTime(run.started_at, true) }}</span>
               <span><StatusPill :state="run.ok ? 'ok' : 'fail'" /></span>
@@ -255,48 +255,48 @@ function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name
               <span class="mono">{{ duration(run.duration_ms) }}</span>
               <span v-if="run.error ?? run.response_snippet" class="muted ellipsis detail" style="font-size: 12.5px" :title="run.error ?? run.response_snippet ?? ''">{{ run.error ?? run.response_snippet ?? "" }}</span>
             </div>
-            <p v-if="runsLoaded && !runs.length" class="muted" style="margin: 12px 0 0; font-size: 14px">{{ t("No runs yet.", "还没有运行记录。") }}</p>
-            <p v-if="!runsLoaded" class="muted" style="margin: 12px 0 0; font-size: 14px">{{ t("Loading…", "加载中…") }}</p>
+            <p v-if="runsLoaded && !runs.length" class="muted" style="margin: 12px 0 0; font-size: 14px">{{ t("No runs yet.") }}</p>
+            <p v-if="!runsLoaded" class="muted" style="margin: 12px 0 0; font-size: 14px">{{ t("Loading…") }}</p>
           </div>
           <button v-if="more" type="button" class="btn sm" style="margin-top: 14px" :disabled="busy === 'more'" @click="loadMore">
-            {{ busy === "more" ? t("Loading…", "加载中…") : t("Load older runs", "加载更早的记录") }}
+            {{ busy === "more" ? t("Loading…") : t("Load older runs") }}
           </button>
         </section>
       </div>
 
       <div class="side-col">
         <section class="card pad">
-          <h3 class="serif" style="margin-bottom: 14px">{{ t("Next 5 runs", "接下来 5 次") }}</h3>
+          <h3 class="serif" style="margin-bottom: 14px">{{ t("Next 5 runs") }}</h3>
           <div v-if="upcoming.length">
             <div v-for="(at, i) in upcoming" :key="at" class="nr">
               <span class="muted">{{ dayLabel(at) }}<template v-if="i === 0"> · {{ relative(at) }}</template></span>
               <b class="mono" :style="{ fontWeight: 500, fontSize: '13.5px', color: i === 0 ? 'var(--accent-ink)' : undefined }">{{ clock(at) }}</b>
             </div>
           </div>
-          <p v-else class="muted" style="margin: 0; font-size: 14px">{{ t("Paused jobs don't run.", "已暂停的任务不会运行。") }}</p>
+          <p v-else class="muted" style="margin: 0; font-size: 14px">{{ t("Paused jobs don't run.") }}</p>
         </section>
 
         <section class="card pad">
-          <h3 class="serif" style="margin-bottom: 14px">{{ t("Settings", "执行配置") }}</h3>
+          <h3 class="serif" style="margin-bottom: 14px">{{ t("Settings") }}</h3>
           <div class="kv">
-            <div><span>{{ t("Timeout", "超时") }}</span><b class="mono">{{ duration(job.timeout_ms) }}</b></div>
-            <div><span>{{ t("Succeeds when", "成功条件") }}</span><b class="mono">{{ succeedsOn2xx(job) ? "2xx" : "exit 0" }}</b></div>
+            <div><span>{{ t("Timeout") }}</span><b class="mono">{{ duration(job.timeout_ms) }}</b></div>
+            <div><span>{{ t("Succeeds when") }}</span><b class="mono">{{ succeedsOn2xx(job) ? "2xx" : "exit 0" }}</b></div>
             <template v-if="job.type === 'url'">
-              <div><span>{{ t("Method", "方法") }}</span><b class="mono">{{ job.method }}</b></div>
-              <div v-if="job.headers && Object.keys(job.headers).length"><span>{{ t("Headers", "请求头") }}</span><b class="mono">{{ Object.keys(job.headers).join(", ") }}</b></div>
-              <div v-if="job.body"><span>{{ t("Body", "请求体") }}</span><b class="mono">{{ job.body.length }} B</b></div>
+              <div><span>{{ t("Method") }}</span><b class="mono">{{ job.method }}</b></div>
+              <div v-if="job.headers && Object.keys(job.headers).length"><span>{{ t("Headers") }}</span><b class="mono">{{ Object.keys(job.headers).join(", ") }}</b></div>
+              <div v-if="job.body"><span>{{ t("Body") }}</span><b class="mono">{{ job.body.length }} B</b></div>
             </template>
             <template v-else>
-              <div><span>{{ t("Script version", "脚本版本") }}</span><b class="mono">v{{ job.script_version }}</b></div>
+              <div><span>{{ t("Script version") }}</span><b class="mono">v{{ job.script_version }}</b></div>
             </template>
-            <div><span>{{ t("Cron time zone", "cron 时区") }}</span><b class="mono">UTC</b></div>
+            <div><span>{{ t("Cron time zone") }}</span><b class="mono">UTC</b></div>
           </div>
         </section>
 
         <section class="card pad">
           <div class="sect-head" style="margin-bottom: 14px">
-            <h3 class="serif">{{ t("Alerts", "告警") }}</h3>
-            <a class="link" :href="href.edit(job.id)">{{ t("Edit", "编辑") }}</a>
+            <h3 class="serif">{{ t("Alerts") }}</h3>
+            <a class="link" :href="href.edit(job.id)">{{ t("Edit") }}</a>
           </div>
           <div v-if="job.notify_targets?.length">
             <div v-for="(target, i) in job.notify_targets" :key="i" class="route">
@@ -304,11 +304,11 @@ function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name
               <span style="min-width: 0">{{ targetLabel(target).name }}<small class="faint ellipsis" style="display: block; font-size: 12.5px">{{ targetLabel(target).detail }}</small></span>
             </div>
           </div>
-          <p v-else class="muted" style="margin: 0; font-size: 14px">{{ t("No alert channels. Failures only show up here.", "没有告警渠道，失败只会记录在这里。") }}</p>
-          <p v-if="job.notify_targets?.length" class="muted foot-note">{{ t("Notifies when a run fails.", "运行失败时通知。") }}</p>
+          <p v-else class="muted" style="margin: 0; font-size: 14px">{{ t("No alert channels. Failures only show up here.") }}</p>
+          <p v-if="job.notify_targets?.length" class="muted foot-note">{{ t("Notifies when a run fails.") }}</p>
         </section>
 
-        <button type="button" class="btn danger" :disabled="busy !== ''" @click="remove"><Icon name="trash" />{{ t("Delete job", "删除任务") }}</button>
+        <button type="button" class="btn danger" :disabled="busy !== ''" @click="remove"><Icon name="trash" />{{ t("Delete job") }}</button>
       </div>
     </div>
   </template>

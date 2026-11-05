@@ -70,19 +70,19 @@ function remove(index: number): void {
       <span class="ri"><Icon name="bell" /></span>
       <span style="min-width: 0; flex: 1">
         {{ notifyName(target.type) }}
-        <small v-if="'sign_secret' in target && target.sign_secret" class="faint"> · {{ t("signed", "已签名") }}</small>
+        <small v-if="'sign_secret' in target && target.sign_secret" class="faint"> · {{ t("signed") }}</small>
         <small class="faint mono ellipsis" style="display: block; font-size: 12px">{{ targetSummary(target) }}</small>
       </span>
-      <button type="button" class="btn sm icon" :aria-label="t(`Remove ${notifyName(target.type)}`, `移除${notifyName(target.type)}`)" @click="remove(index)">
+      <button type="button" class="btn sm icon" :aria-label="t('Remove {channel}', { channel: notifyName(target.type) })" @click="remove(index)">
         <Icon name="x" :size="14" />
       </button>
     </div>
     <p v-if="!targets.length && !draft" class="muted" style="margin: 0 0 12px; font-size: 14px">
-      {{ t("No alert channels yet. Add one to hear about failures.", "还没有告警渠道。添加一个，任务失败时会通知你。") }}
+      {{ t("No alert channels yet. Add one to hear about failures.") }}
     </p>
 
-    <div v-if="draft" class="draft" role="group" :aria-label="t('New alert channel', '新告警渠道')" @keydown.esc.stop="cancel" @keydown.enter="onEnter" @input="error = ''">
-      <div class="types" role="radiogroup" :aria-label="t('Channel', '渠道')">
+    <div v-if="draft" class="draft" role="group" :aria-label="t('New alert channel')" @keydown.esc.stop="cancel" @keydown.enter="onEnter" @input="error = ''">
+      <div class="types" role="radiogroup" :aria-label="t('Channel')">
         <button
           v-for="type in NOTIFY_TYPES"
           :key="type"
@@ -109,29 +109,29 @@ function remove(index: number): void {
       </template>
       <template v-else>
         <label class="fld">
-          <span>{{ t("Webhook URL", "Webhook 地址") }}</span>
+          <span>{{ t("Webhook URL") }}</span>
           <input ref="firstField" v-model="draft.url" class="in mono" type="url" inputmode="url" autocomplete="off" spellcheck="false" :placeholder="urlPlaceholder(draft.type)" />
         </label>
         <label v-if="draft.type === 'lark' || draft.type === 'dingtalk'" class="fld">
-          <span>{{ t("Signing secret", "签名密钥") }} <small class="faint">{{ t("optional", "可选") }}</small></span>
+          <span>{{ t("Signing secret") }} <small class="faint">{{ t("optional") }}</small></span>
           <input v-model="draft.sign_secret" class="in mono" autocomplete="off" spellcheck="false" />
         </label>
         <label v-if="draft.type === 'http'" class="fld">
-          <span>{{ t("Headers as JSON", "请求头（JSON）") }} <small class="faint">{{ t("optional", "可选") }}</small></span>
+          <span>{{ t("Headers as JSON") }} <small class="faint">{{ t("optional") }}</small></span>
           <textarea v-model="draft.headers_text" class="in mono" rows="2" spellcheck="false" placeholder='{"x-api-key": "…"}'></textarea>
-          <small>{{ t("Receives a JSON POST describing the failed run.", "收到一条描述失败运行的 JSON POST。") }}</small>
+          <small>{{ t("Receives a JSON POST describing the failed run.") }}</small>
         </label>
       </template>
 
       <p v-if="error" class="fld" style="margin: 0"><small class="err" role="alert">{{ error }}</small></p>
       <div style="display: flex; gap: 8px">
-        <button type="button" class="btn sm primary" @click="add">{{ t("Add channel", "添加渠道") }}</button>
-        <button type="button" class="btn sm" @click="cancel">{{ t("Cancel", "取消") }}</button>
+        <button type="button" class="btn sm primary" @click="add">{{ t("Add channel") }}</button>
+        <button type="button" class="btn sm" @click="cancel">{{ t("Cancel") }}</button>
       </div>
     </div>
 
     <button v-else ref="addButton" type="button" class="btn sm" style="margin-top: 4px" @click="start()">
-      <Icon name="plus" :size="14" />{{ t("Add alert channel", "添加告警渠道") }}
+      <Icon name="plus" :size="14" />{{ t("Add alert channel") }}
     </button>
   </div>
 </template>

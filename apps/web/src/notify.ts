@@ -6,8 +6,8 @@ export const NOTIFY_TYPES: NotifyType[] = ["slack", "discord", "lark", "dingtalk
 export function notifyName(type: NotifyType): string {
   switch (type) {
     case "http": return "Webhook";
-    case "lark": return t("Lark", "飞书");
-    case "dingtalk": return t("DingTalk", "钉钉");
+    case "lark": return t("Lark");
+    case "dingtalk": return t("DingTalk");
     case "telegram": return "Telegram";
     case "slack": return "Slack";
     case "discord": return "Discord";
@@ -52,18 +52,18 @@ export function draftToTarget(draft: NotifyDraft): DraftResult {
   if (draft.type === "telegram") {
     const bot_token = draft.bot_token.trim();
     const chat_id = draft.chat_id.trim();
-    if (!bot_token || !chat_id) return { error: t("Enter both the bot token and the chat ID.", "请填写 bot token 和 chat ID。") };
+    if (!bot_token || !chat_id) return { error: t("Enter both the bot token and the chat ID.") };
     return { target: { type: "telegram", bot_token, chat_id } };
   }
 
   const url = draft.url.trim();
-  if (!url) return { error: t("Enter the webhook URL.", "请填写 Webhook 地址。") };
+  if (!url) return { error: t("Enter the webhook URL.") };
   const scheme = draft.type === "http" ? /^https?:\/\/\S+$/i : /^https:\/\/\S+$/i;
   if (!scheme.test(url)) {
     return {
       error: draft.type === "http"
-        ? t("The URL must start with http:// or https://.", "地址需以 http:// 或 https:// 开头。")
-        : t("The URL must start with https://.", "地址需以 https:// 开头。"),
+        ? t("The URL must start with http:// or https://.")
+        : t("The URL must start with https://."),
     };
   }
 
@@ -74,13 +74,13 @@ export function draftToTarget(draft: NotifyDraft): DraftResult {
       try {
         parsed = JSON.parse(draft.headers_text);
       } catch {
-        return { error: t("Headers must be valid JSON.", "请求头需为合法 JSON。") };
+        return { error: t("Headers must be valid JSON.") };
       }
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        return { error: t("Headers must be a JSON object.", "请求头需为 JSON 对象。") };
+        return { error: t("Headers must be a JSON object.") };
       }
       if (!Object.values(parsed).every((value) => typeof value === "string")) {
-        return { error: t("Header values must be strings.", "请求头的值需为字符串。") };
+        return { error: t("Header values must be strings.") };
       }
       return { target: { type: "http", url, headers: parsed as Record<string, string> } };
     }
