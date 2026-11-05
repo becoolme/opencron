@@ -83,7 +83,8 @@ function utcTime(hour: string, minute: string): string {
 
 function weekdayName(n: number): string {
   const ref = new Date(Date.UTC(2024, 0, 7 + (n % 7))); // 2024-01-07 is a Sunday
-  return ref.toLocaleDateString(locale(), { weekday: "long", timeZone: "UTC" });
+  // Chinese reads "每周日" with the short form; "每星期日" sounds translated.
+  return ref.toLocaleDateString(locale(), { weekday: locale() === "zh-CN" ? "short" : "long", timeZone: "UTC" });
 }
 
 /** Plain-words reading of common cron shapes; falls back to null for anything else. */
