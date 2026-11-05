@@ -19,6 +19,7 @@ You need Node 22+ and pnpm. See [docs/development.md](docs/development.md).
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm test:docker   # when you change the Docker deployment; needs Docker
 ```
 
 - Keep changes focused; one concern per pull request.

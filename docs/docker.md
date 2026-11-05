@@ -49,7 +49,9 @@ The `sandbox` service starts each run with `docker run` and these limits:
 - a read-only root file system; the only writable place is a `/tmp` tmpfs (256 MB, 512 MB for Go), which cannot hold
   executables except for Go, whose compiler needs it;
 - a non-root user (`65534`), every Linux capability dropped, `no-new-privileges`;
-- 512 MB of memory without swap (1 GB for Go), one CPU, 64 processes, 256 open files;
+- 512 MB of memory without swap (1 GB for Go), one CPU, 64 processes, 256 open files; Go builds and runs with
+  `GOFLAGS=-p=1` and `GOMAXPROCS=1` so that its compiler, which otherwise starts a worker per host CPU, stays within
+  them;
 - no volumes, no Docker socket, no environment from the host; the image is never pulled at run time;
 - killed once the job's timeout passes (Go gets 30 seconds on top for compiling, the others 2 seconds); the container is
   removed afterwards.
@@ -72,6 +74,14 @@ For stronger isolation:
 
 If you do not need Python or Go, remove the `sandbox` service and the `SANDBOX_URL` line: the app then refuses script
 jobs, and HTTP jobs keep working.
+
+## Checking a deployment
+
+`pnpm test:docker` builds `docker-compose.yml` as a throwaway Compose project on a free port, signs up, runs a
+JavaScript, a Python and a Go job, checks from inside a script that it has no network, no writable root, no Docker
+socket and no deployment secrets, checks timeouts and failures, and removes everything it created. Run it after changing
+the Dockerfiles, the compose file, the sandbox or `apps/api/src/server.ts`; CI runs it on every pull request.
+`SMOKE_KEEP=1 pnpm test:docker` leaves the stack running.
 
 ## Settings
 

@@ -18,3 +18,12 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  docker:
+    # the self-hosted deployment end to end: compose up, a job in each runtime, the sandbox's limits, teardown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/smoke-docker.mjs

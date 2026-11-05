@@ -8,6 +8,7 @@
     "build": "pnpm --filter @opencron/web build",
     "deploy": "pnpm --filter @opencron/web deploy",
     "test": "pnpm -r --if-present test && node scripts/sync-openuptime.mjs --check && node scripts/check-editions.mjs",
+    "test:docker": "node scripts/smoke-docker.mjs",
     "typecheck": "pnpm -r --if-present typecheck",
     "db:init:local": "pnpm --filter @opencron/api db:init:local",
     "db:init:remote": "pnpm --filter @opencron/api db:init:remote",
