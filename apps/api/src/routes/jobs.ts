@@ -1,9 +1,21 @@
+import type { Context } from "hono";
 import { getDatabase } from "../database";
 import { Hono } from "hono";
 import type { AppHonoEnv, JobRow } from "../types";
 import { jobRowToDto } from "../types";
 import { nextRunAt, validateCron } from "../cron";
 import { runJob } from "../runner";
+import { availableRuntimes, isScriptRuntime } from "../runtimes";
+import type { Env } from "../types";
+
+/** Largest script accepted, in characters. */
+const MAX_SCRIPT_LENGTH = 256 * 1024;
+
+function validateRuntime(env: Env, runtime: unknown): string | null {
+  if (!isScriptRuntime(runtime)) return "runtime must be 'javascript', 'python' or 'go'";
+  if (!availableRuntimes(env).includes(runtime)) return `runtime '${runtime}' is not available on this deployment`;
+  return null;
+}
 
 const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]);
 
@@ -18,6 +30,7 @@ type CreateInput = {
   timeout_ms?: number;
   type?: string;
   script?: string;
+  runtime?: string;
   notify_targets?: unknown;
 };
 
@@ -85,7 +98,7 @@ function normalizeNotifyTargets(raw: unknown): string | null {
   return JSON.stringify(raw);
 }
 
-function validateCreate(input: CreateInput): string | null {
+function validateCreate(env: Env, input: CreateInput): string | null {
   if (!input.name || typeof input.name !== "string") return "name is required";
   const type = (input.type ?? "url");
   if (type !== "url" && type !== "script") return "type must be 'url' or 'script'";
@@ -106,8 +119,12 @@ function validateCreate(input: CreateInput): string | null {
     }
     if (input.body != null && typeof input.body !== "string") return "body must be a string";
     if (input.script != null) return "script must not be set when type='url'";
+    if (input.runtime != null) return "runtime must not be set when type='url'";
   } else {
     if (!input.script || typeof input.script !== "string") return "script is required for type='script'";
+    if (input.script.length > MAX_SCRIPT_LENGTH) return "script is too long (256 KB at most)";
+    const runtimeErr = validateRuntime(env, input.runtime ?? "javascript");
+    if (runtimeErr) return runtimeErr;
     if (input.url != null) return "url must not be set when type='script'";
     if (input.method != null) return "method must not be set when type='script'";
     if (input.headers != null) return "headers must not be set when type='script'";
@@ -118,6 +135,12 @@ function validateCreate(input: CreateInput): string | null {
     if (ntErr) return ntErr;
   }
   return null;
+}
+
+/** Workers pass an ExecutionContext (its exports carry the storage capabilities); Node has none, and Hono throws. */
+// Node (the Docker server) has no ExecutionContext and Hono throws when it is read there
+function executionContext(c: Context<AppHonoEnv, string>): ExecutionContext | undefined {
+  try { return c.executionCtx as unknown as ExecutionContext; } catch { return undefined; }
 }
 
 export const jobsRouter = new Hono<AppHonoEnv>();
@@ -132,7 +155,7 @@ jobsRouter.get("/", async (c) => {
 jobsRouter.post("/", async (c) => {
   const userId = c.get("userId");
   const input = (await c.req.json().catch(() => ({}))) as CreateInput;
-  const err = validateCreate(input);
+  const err = validateCreate(c.env, input);
   if (err) return c.json({ error: err }, 400);
 
   const now = Math.floor(Date.now() / 1000);
@@ -160,11 +183,11 @@ jobsRouter.post("/", async (c) => {
     row = await getDatabase(c.env).prepare(
       `INSERT INTO jobs (name, url, method, headers, body, cron, enabled, timeout_ms,
                          next_run_at, created_at, updated_at, type, script, script_version,
-                         notify_targets, owner_user_id)
-       VALUES (?, NULL, 'GET', NULL, NULL, ?, ?, ?, ?, ?, ?, 'script', ?, 1, ?, ?)
+                         runtime, notify_targets, owner_user_id)
+       VALUES (?, NULL, 'GET', NULL, NULL, ?, ?, ?, ?, ?, ?, 'script', ?, 1, ?, ?, ?)
        RETURNING *`,
     )
-      .bind(input.name, input.cron, enabled, timeout, next, now, now, input.script!,
+      .bind(input.name, input.cron, enabled, timeout, next, now, now, input.script!, input.runtime ?? "javascript",
             normalizeNotifyTargets(input.notify_targets), userId)
       .first<JobRow>();
   }
@@ -179,7 +202,7 @@ type UpdateInput = Partial<CreateInput> & {
   notify_targets?: unknown;
 };
 
-function validateUpdate(input: UpdateInput, existingType: "url" | "script"): string | null {
+function validateUpdate(env: Env, input: UpdateInput, existingType: "url" | "script"): string | null {
   if (input.type != null && input.type !== existingType) return "type is immutable";
   if (input.cron != null && !validateCron(input.cron)) return "cron is invalid";
   if (input.timeout_ms != null) {
@@ -190,6 +213,7 @@ function validateUpdate(input: UpdateInput, existingType: "url" | "script"): str
 
   if (existingType === "url") {
     if (input.script != null) return "script must not be set on type='url'";
+    if (input.runtime != null) return "runtime must not be set on type='url'";
     if (input.url != null) {
       if (typeof input.url !== "string") return "url must be a string";
       try { new URL(input.url); } catch { return "url is not a valid URL"; }
@@ -211,6 +235,11 @@ function validateUpdate(input: UpdateInput, existingType: "url" | "script"): str
     if (input.body != null) return "body must not be set on type='script'";
     if (input.script != null) {
       if (typeof input.script !== "string" || input.script === "") return "script must be a non-empty string";
+      if (input.script.length > MAX_SCRIPT_LENGTH) return "script is too long (256 KB at most)";
+    }
+    if (input.runtime != null) {
+      const runtimeErr = validateRuntime(env, input.runtime);
+      if (runtimeErr) return runtimeErr;
     }
   }
   if (input.notify_targets !== undefined) {
@@ -238,7 +267,7 @@ jobsRouter.patch("/:id", async (c) => {
   if (!existing) return c.json({ error: "not found" }, 404);
 
   const input = (await c.req.json().catch(() => ({}))) as UpdateInput;
-  const err = validateUpdate(input, existing.type);
+  const err = validateUpdate(c.env, input, existing.type);
   if (err) return c.json({ error: err }, 400);
 
   const now = Math.floor(Date.now() / 1000);
@@ -254,10 +283,11 @@ jobsRouter.patch("/:id", async (c) => {
     if (input.headers !== undefined) merged.headers = input.headers === null ? null : JSON.stringify(input.headers);
     if (input.body !== undefined) merged.body = input.body ?? null;
   } else {
-    if (input.script != null && input.script !== existing.script) {
-      merged.script = input.script;
-      merged.script_version = existing.script_version + 1;
-    }
+    const scriptChanged = input.script != null && input.script !== existing.script;
+    const runtimeChanged = input.runtime != null && input.runtime !== existing.runtime;
+    if (scriptChanged) merged.script = input.script!;
+    if (runtimeChanged) merged.runtime = input.runtime as JobRow["runtime"];
+    if (scriptChanged || runtimeChanged) merged.script_version = existing.script_version + 1;
   }
   if (input.notify_targets !== undefined) {
     merged.notify_targets = normalizeNotifyTargets(input.notify_targets);
@@ -274,14 +304,14 @@ jobsRouter.patch("/:id", async (c) => {
     `UPDATE jobs
        SET name=?, url=?, method=?, headers=?, body=?, cron=?, enabled=?,
            timeout_ms=?, next_run_at=?, updated_at=?, script=?, script_version=?,
-           notify_targets=?
+           runtime=?, notify_targets=?
      WHERE id=? AND owner_user_id=?`,
   )
     .bind(
       merged.name, merged.url, merged.method, merged.headers, merged.body,
       merged.cron, merged.enabled, merged.timeout_ms, merged.next_run_at,
       merged.updated_at, merged.script, merged.script_version,
-      merged.notify_targets, id, userId,
+      merged.runtime ?? "javascript", merged.notify_targets, id, userId,
     )
     .run();
 
@@ -298,7 +328,7 @@ jobsRouter.post("/:id/run", async (c) => {
     "SELECT * FROM jobs WHERE id = ? AND owner_user_id = ?",
   ).bind(id, userId).first<JobRow>();
   if (!job) return c.json({ error: "not found" }, 404);
-  const result = await runJob(c.env, job, c.executionCtx);
+  const result = await runJob(c.env, job, executionContext(c));
   // Manual run does not advance next_run_at, but we do update last_run_at/last_status.
   await getDatabase(c.env).prepare(
     "UPDATE jobs SET last_run_at = ?, last_status = ?, updated_at = ? WHERE id = ? AND owner_user_id = ?",

@@ -22,6 +22,8 @@
     "db:migrate:postgres": "pnpm --filter @opencron/api db:migrate:postgres",
     "db:migrate:local:0006": "pnpm --filter @opencron/api db:migrate:local:0006",
     "db:migrate:remote:0006": "pnpm --filter @opencron/api db:migrate:remote:0006",
+    "db:migrate:local:0007": "pnpm --filter @opencron/api db:migrate:local:0007",
+    "db:migrate:remote:0007": "pnpm --filter @opencron/api db:migrate:remote:0007",
     "test:postgres": "pnpm --filter @opencron/api test:postgres",
     "test:smoke": "pnpm --filter @opencron/api test:smoke",
     "preview": "pnpm --filter @opencron/web preview",

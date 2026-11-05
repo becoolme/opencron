@@ -1,5 +1,7 @@
 # Deploy to Cloudflare
 
+To run OpenCron on your own server instead, see [docker.md](docker.md).
+
 OpenCron deploys as one Worker with static assets, a cron trigger, a D1 database, a KV namespace and a Worker Loader
 binding (for script jobs). The commands run from the repository root.
 
@@ -17,7 +19,7 @@ binding (for script jobs). The commands run from the repository root.
 
    ```bash
    pnpm db:init:remote
-   pnpm db:migrate:remote:0002   # …through 0006
+   pnpm db:migrate:remote:0002   # …through 0007
    pnpm --filter @opencron/api exec wrangler secret put BETTER_AUTH_SECRET
    ```
 

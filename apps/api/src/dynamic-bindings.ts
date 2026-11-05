@@ -286,6 +286,7 @@ export class OpenCronD1 extends WorkerEntrypoint<Env, StorageProps> {
 /** Prefix-scoped KV capability; the native namespace never enters the sandbox. */
 export class OpenCronKV extends WorkerEntrypoint<Env, StorageProps> {
   #storage(): ScopedKvStorage {
+    if (!this.env.SCRIPT_KV) throw new Error("KV storage is not configured on this deployment");
     return new ScopedKvStorage(this.env.SCRIPT_KV, this.ctx.props.userId, this.ctx.props.jobId);
   }
 

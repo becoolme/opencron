@@ -17,6 +17,7 @@ const baseJob: JobRow = {
   last_run_at: null,
   last_status: null,
   type: "url",
+  runtime: "javascript",
   script: null,
   script_version: 1,
   notify_targets: null,

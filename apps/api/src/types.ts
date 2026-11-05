@@ -1,15 +1,23 @@
 import type { WorkerLoader } from "./loader-types";
 
+export type ScriptRuntime = "javascript" | "python" | "go";
+
 export interface Env {
   DB?: D1Database;
   DB_PROVIDER?: "d1" | "postgres";
   DATABASE_URL?: string;
   HYPERDRIVE?: { connectionString: string };
-  SCRIPT_KV: KVNamespace;
+  /** Cloudflare only: storage behind the KV capability of JavaScript scripts. */
+  SCRIPT_KV?: KVNamespace;
   BETTER_AUTH_SECRET: string;
   /** Public URL of this deployment, e.g. https://cron.example.com. Sign-in is accepted from its host and localhost. */
   APP_URL?: string;
-  LOADER: WorkerLoader;
+  /** Cloudflare only: runs JavaScript script jobs as Dynamic Workers. */
+  LOADER?: WorkerLoader;
+  /** Docker only: base URL of the sandbox service that runs script jobs in containers (apps/sandbox). */
+  SANDBOX_URL?: string;
+  /** Docker only: shared secret the sandbox service requires on every request. */
+  SANDBOX_TOKEN?: string;
   /** "true" lets HTTP jobs and webhooks reach private or internal addresses. Off by default. */
   ALLOW_PRIVATE_TARGETS?: string;
 }
@@ -39,6 +47,7 @@ export interface JobRow {
   type: "url" | "script";
   script: string | null;
   script_version: number;
+  runtime: ScriptRuntime;
   notify_targets: string | null;   // JSON-encoded NotifyTarget[] in DB
   last_notified_at: number | null; // unix seconds
   created_at: number;
@@ -62,6 +71,7 @@ export interface JobDto {
   type: "url" | "script";
   script: string | null;
   script_version: number;
+  runtime: ScriptRuntime;
   notify_targets: NotifyTarget[] | null;
   last_notified_at: number | null;
   created_at: number;
@@ -104,6 +114,7 @@ export function jobRowToDto(row: JobRow): JobDto {
     type: row.type,
     script: row.script,
     script_version: row.script_version,
+    runtime: row.runtime ?? "javascript",
     notify_targets: (() => {
       if (!row.notify_targets) return null;
       try { return JSON.parse(row.notify_targets) as NotifyTarget[]; }

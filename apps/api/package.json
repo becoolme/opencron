@@ -19,12 +19,17 @@
     "db:migrate:postgres": "tsx scripts/migrate-postgres.ts",
     "db:migrate:local:0006": "wrangler d1 execute DB --local --file=./migrations/0006_script_tables.sql",
     "db:migrate:remote:0006": "wrangler d1 execute DB --remote --file=./migrations/0006_script_tables.sql",
+    "db:migrate:local:0007": "wrangler d1 execute DB --local --file=./migrations/0007_script_runtime.sql",
+    "db:migrate:remote:0007": "wrangler d1 execute DB --remote --file=./migrations/0007_script_runtime.sql",
     "test:postgres": "tsx scripts/test-postgres.ts",
     "test:smoke": "tsx scripts/smoke-database.ts",
     "typecheck": "tsc --noEmit",
-    "dev": "wrangler dev"
+    "dev": "wrangler dev",
+    "build:node": "esbuild src/server.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/server.mjs --external:pg-native --banner:js=\"import{createRequire as __cr}from'node:module';const require=__cr(import.meta.url);\"",
+    "start:node": "node dist/server.mjs"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.4",
     "@openuptime/kit": "workspace:*",
     "better-auth": "1.7.1",
     "cron-parser": "^4.9.0",
@@ -35,6 +40,7 @@
     "@cloudflare/vitest-pool-workers": "^0.5.0",
     "@cloudflare/workers-types": "5.20261104.1",
     "@types/pg": "^8.23.1",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
     "typescript": "^5.5.0",
     "vitest": "~2.1.0",

@@ -25,9 +25,13 @@ identical to it:
 
 ## Runtime
 
-OpenCron deploys to Cloudflare Workers. Script jobs are JavaScript modules run by the Worker Loader with
-`nodejs_compat`; there is no Python or shell runtime, and scripts have no outbound network access. Keep the UI, docs and
-API from offering anything else.
+OpenCron deploys to Cloudflare Workers by default. There, script jobs are JavaScript modules run by the Worker Loader
+with `nodejs_compat`; there is no Python or shell runtime, and scripts have no outbound network access.
+
+The Docker deployment (`docker-compose.yml`, `apps/api/src/server.ts`, `apps/sandbox`) adds Node.js, Python and Go,
+each run in a fresh container with no network, a read-only root, no capabilities and fixed limits
+(`apps/sandbox/src/docker-args.mjs`, tested). Never loosen those flags without a test and an entry in `docs/docker.md`.
+The UI offers only what `GET /api/meta` reports for the deployment.
 
 ## Other conventions
 

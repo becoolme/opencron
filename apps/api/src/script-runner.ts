@@ -2,6 +2,7 @@ import { getDatabase } from "./database";
 import type { Env, JobRow } from "./types";
 import type { WorkerCode } from "./loader-types";
 import type { RunResult } from "./runner";
+import { runInSandbox, tail } from "./sandbox-client";
 
 type DynamicBindings = {
   db?: unknown;
@@ -59,27 +60,43 @@ export async function runScriptJob(env: Env, job: JobRow, ctx?: LoaderExecutionC
 
   try {
     if (!job.script) throw new Error("script is empty");
-    const handle = env.LOADER.get(
-      `job-${job.id}-v${job.script_version}`,
-      () => buildWorkerCode(env, job.script!, ctx, job),
-    );
-    const entrypoint = handle.getEntrypoint();
-    const req = new Request("https://opencron.internal/run", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      signal: AbortSignal.timeout(job.timeout_ms),
-      body: JSON.stringify({
-        jobId: job.id,
-        jobName: job.name,
-        scheduledAt: started_at,
-        invocation: "cron",
-      }),
-    });
-    const res = await entrypoint.fetch(req);
-    status_code = res.status;
-    ok = res.ok;
-    const text = await res.text();
-    response_snippet = text.slice(0, 500);
+    const runtime = job.runtime ?? "javascript";
+    if (runtime === "javascript" && env.LOADER) {
+      const handle = env.LOADER.get(
+        `job-${job.id}-v${job.script_version}`,
+        () => buildWorkerCode(env, job.script!, ctx, job),
+      );
+      const entrypoint = handle.getEntrypoint();
+      const req = new Request("https://opencron.internal/run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal: AbortSignal.timeout(job.timeout_ms),
+        body: JSON.stringify({
+          jobId: job.id,
+          jobName: job.name,
+          scheduledAt: started_at,
+          invocation: "cron",
+        }),
+      });
+      const res = await entrypoint.fetch(req);
+      status_code = res.status;
+      ok = res.ok;
+      const text = await res.text();
+      response_snippet = text.slice(0, 500);
+    } else if (env.SANDBOX_URL) {
+      const run = await runInSandbox(env, {
+        runtime,
+        source: job.script,
+        timeout_ms: job.timeout_ms,
+        context: { jobId: job.id, jobName: job.name, scheduledAt: started_at, invocation: "cron" },
+      });
+      ok = run.exit_code === 0 && !run.timed_out;
+      response_snippet = run.stdout ? tail(run.stdout, 500) : null;
+      if (run.timed_out) error = `Timed out after ${job.timeout_ms} ms`;
+      else if (!ok) error = run.stderr.trim() ? tail(run.stderr.trim(), 1000) : `Exited with code ${run.exit_code}`;
+    } else {
+      throw new Error(`This deployment cannot run ${runtime} scripts`);
+    }
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }
