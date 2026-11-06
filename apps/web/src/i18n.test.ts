@@ -31,6 +31,7 @@ describe("language paths", () => {
     expect(parse("/jobs/new")).toEqual({ name: "new" });
     expect(parse("/runs/")).toEqual({ name: "runs" });
     expect(parse("/secrets")).toEqual({ name: "secrets" });
+    expect(parse("/keys")).toEqual({ name: "keys" });
     expect(parse("/nowhere")).toEqual({ name: "jobs" });
   });
 });

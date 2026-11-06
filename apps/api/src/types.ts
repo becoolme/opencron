@@ -30,6 +30,10 @@ export type AppHonoEnv = {
     userId: string;
     userName: string;
     userEmail: string;
+    /** How the caller signed in: a browser session or an API key. */
+    authMethod: "session" | "api_key";
+    /** The key's scope when authMethod is api_key. */
+    apiKeyScope?: "read" | "write";
   };
 };
 

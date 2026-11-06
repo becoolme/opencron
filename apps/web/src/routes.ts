@@ -2,6 +2,7 @@ export type Route =
   | { name: "jobs" }
   | { name: "runs" }
   | { name: "secrets" }
+  | { name: "keys" }
   | { name: "new" }
   | { name: "job"; id: number }
   | { name: "edit"; id: number };
@@ -11,6 +12,7 @@ export function parse(path: string): Route {
   const clean = path.replace(/\/+$/, "") || "/";
   if (clean === "/runs") return { name: "runs" };
   if (clean === "/secrets") return { name: "secrets" };
+  if (clean === "/keys") return { name: "keys" };
   if (clean === "/jobs/new") return { name: "new" };
   const edit = clean.match(/^\/jobs\/(\d+)\/edit$/);
   if (edit) return { name: "edit", id: Number(edit[1]) };

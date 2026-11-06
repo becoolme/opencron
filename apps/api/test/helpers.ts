@@ -18,6 +18,7 @@ export async function clearDb() {
     env.DB.prepare("DELETE FROM script_storage"),
     env.DB.prepare("DELETE FROM jobs"),
     env.DB.prepare("DELETE FROM secrets"),
+    env.DB.prepare("DELETE FROM api_keys"),
     env.DB.prepare("DELETE FROM sqlite_sequence WHERE name IN ('jobs','executions','secrets')"),
   ]);
 }

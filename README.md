@@ -9,6 +9,8 @@ Scheduled HTTP calls and script jobs, with run history and failure alerts. Runs 
 - **Alerts** go to Slack, Discord, Telegram, Lark, DingTalk or any HTTP endpoint (optionally HMAC-signed) when a run
   fails.
 - **Accounts** with email and password; every job and its storage belong to one user.
+- **Secrets** per account, passed to script jobs as environment variables.
+- **API keys, REST API and MCP** for scripts, CI and AI assistants, read-only or read-write. See [docs/api.md](docs/api.md).
 
 On Cloudflare, one Worker serves the API, the web app and the every-minute scheduler, with the data in D1 or Postgres.
 To self-host instead, `docker compose up` runs the same app on Node with Postgres and a script sandbox
@@ -20,7 +22,8 @@ To self-host instead, `docker compose up` runs the same app on Node with Postgre
 pnpm install
 cp apps/api/.dev.vars.example apps/api/.dev.vars   # set BETTER_AUTH_SECRET
 pnpm db:init:local && pnpm db:migrate:local:0002 && pnpm db:migrate:local:0003 \
-  && pnpm db:migrate:local:0004 && pnpm db:migrate:local:0005 && pnpm db:migrate:local:0006 && pnpm db:migrate:local:0007
+  && pnpm db:migrate:local:0004 && pnpm db:migrate:local:0005 && pnpm db:migrate:local:0006 && pnpm db:migrate:local:0007 \
+  && pnpm db:migrate:local:0008 && pnpm db:migrate:local:0009
 pnpm dev                                           # http://localhost:5173
 ```
 
