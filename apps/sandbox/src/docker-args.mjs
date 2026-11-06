@@ -7,10 +7,12 @@
 
 export const RUNTIMES = ["javascript", "python", "go"];
 
+// Pinned by digest, so a tag moved upstream cannot change what runs scripts. Update with
+// `docker buildx imagetools inspect <image>` and change docker-compose.yml and .env.docker.example to match.
 export const DEFAULT_IMAGES = {
-  javascript: "node:22-alpine",
-  python: "python:3.12-alpine",
-  go: "golang:1.23-alpine",
+  javascript: "node:22-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202",
+  python: "python:3.12-alpine@sha256:213242b537a1c166a0c53e903461fc18d5518e7196c93dbecda452660a848918",
+  go: "golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f",
 };
 
 // Imports the user's module and calls it the way the Cloudflare runtime would: `default.fetch(request, env, ctx)` or a

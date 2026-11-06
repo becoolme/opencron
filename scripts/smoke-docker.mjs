@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * End-to-end check of the Docker deployment: builds and starts docker-compose.yml as its own throwaway project, signs
- * up, runs a JavaScript, a Python and a Go job through the sandbox, checks that scripts are locked down, then removes
+ * up, runs a JavaScript, a Python and a Go job through the sandbox, checks that scripts are locked down and that the
+ * sandbox can reach Docker only through the guard, then removes
  * everything it created. Needs Docker with Compose; the first run pulls the runtime images.
  *
  *   pnpm test:docker                 # build, check, tear down
@@ -14,6 +15,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DEFAULT_IMAGES } from "../apps/sandbox/src/docker-args.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 const project = `opencron-smoke-${randomBytes(3).toString("hex")}`;
@@ -70,6 +72,15 @@ try {
     "content-type": "application/json",
     origin: base,
   };
+  pass("the first account signs up");
+  const second = await fetch(`${base}/api/auth/sign-up/email`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: base },
+    body: JSON.stringify({ name: "Second", email: `smoke-${randomUUID()}@example.test`, password: randomUUID() }),
+  });
+  assert.equal(second.status, 403, await second.clone().text());
+  assert.deepEqual(await (await fetch(`${base}/api/instance`)).json(), { sign_up: false });
+  pass("a second sign-up is refused (SIGNUP=closed)");
   const api = async (path, method = "GET", body) => {
     const res = await fetch(`${base}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
     assert.ok(res.ok, `${method} ${path}: ${res.status} ${await res.clone().text()}`);
@@ -137,6 +148,24 @@ try {
   assert.equal(slow.ok, false);
   assert.match(slow.error, /Timed out after 1000 ms/);
   pass("a script past its timeout is stopped");
+
+  step("The sandbox can only start run containers");
+  const inSandbox = (...args) => spawnSync("docker", compose("exec", "-T", "sandbox", ...args), { cwd: root, encoding: "utf8" });
+  assert.equal(inSandbox("test", "-e", "/var/run/docker.sock").status, 1);
+  pass("the sandbox has no Docker socket");
+  const refusedByGuard = (...args) => {
+    const result = inSandbox("docker", ...args);
+    assert.notEqual(result.status, 0, `docker ${args.join(" ")} should fail`);
+    assert.match(result.stderr, /refused by the OpenCron Docker guard/, result.stderr);
+  };
+  const runName = `opencron-run-${randomBytes(8).toString("hex")}`;
+  refusedByGuard("ps");
+  refusedByGuard("pull", "alpine:latest");
+  refusedByGuard("run", "--rm", "--name", runName, "-v", "/:/host", "--user", "65534:65534", DEFAULT_IMAGES.python, "true");
+  refusedByGuard("run", "--rm", "--name", runName, "--privileged", "--user", "65534:65534", DEFAULT_IMAGES.python, "true");
+  refusedByGuard("run", "--rm", "--name", "anything", DEFAULT_IMAGES.python, "true");
+  refusedByGuard("kill", `${project}-postgres-1`);
+  pass("listing, pulling other images, host mounts, privileged runs and other containers are refused");
 
   // `docker run --rm` and `docker kill` happen asynchronously; give them a moment
   let leftovers = "";

@@ -30,7 +30,9 @@ with `nodejs_compat`; there is no Python or shell runtime, and scripts have no o
 
 The Docker deployment (`docker-compose.yml`, `apps/api/src/server.ts`, `apps/sandbox`) adds Node.js, Python and Go,
 each run in a fresh container with no network, a read-only root, no capabilities and fixed limits
-(`apps/sandbox/src/docker-args.mjs`, tested). Never loosen those flags without a test and an entry in `docs/docker.md`.
+(`apps/sandbox/src/docker-args.mjs`, tested). The sandbox reaches Docker only through `docker-guard`, which refuses
+any container that does not match those flags (`apps/sandbox/src/docker-policy.mjs`, tested). Never loosen either
+without a test and an entry in `docs/docker.md`.
 The UI offers only what `GET /api/meta` reports for the deployment.
 
 ## Other conventions

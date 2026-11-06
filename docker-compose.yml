@@ -1,6 +1,15 @@
-# Self-hosted OpenCron: app + PostgreSQL + script sandbox.
+# Self-hosted OpenCron: app + PostgreSQL + script sandbox + Docker API guard.
 #   cp .env.docker.example .env && edit it, then: docker compose up -d --build
-# Read docs/docker.md before exposing it: the sandbox holds the Docker socket.
+# Read docs/docker.md before exposing it: the docker-guard service holds the Docker socket.
+
+# What a script container may be: the sandbox builds runs from these and the guard refuses anything else.
+x-run-settings: &run-settings
+  SANDBOX_DOCKER_RUNTIME: ${SANDBOX_DOCKER_RUNTIME:-}
+  SANDBOX_NETWORK: ${SANDBOX_NETWORK:-none}
+  # empty means the images pinned in apps/sandbox/src/docker-args.mjs
+  SANDBOX_IMAGE_NODE: ${SANDBOX_IMAGE_NODE:-}
+  SANDBOX_IMAGE_PYTHON: ${SANDBOX_IMAGE_PYTHON:-}
+  SANDBOX_IMAGE_GO: ${SANDBOX_IMAGE_GO:-}
 
 services:
   app:
@@ -13,6 +22,8 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
       APP_URL: ${APP_URL:-http://localhost:8080}
       ALLOW_PRIVATE_TARGETS: ${ALLOW_PRIVATE_TARGETS:-false}
+      # the first account can always be created; "open" lets anyone who reaches the app sign up and run scripts
+      SIGNUP: ${SIGNUP:-closed}
       SANDBOX_URL: http://sandbox:8787
       SANDBOX_TOKEN: ${SANDBOX_TOKEN:?set SANDBOX_TOKEN in .env}
     depends_on:
@@ -46,17 +57,39 @@ services:
     build: ./apps/sandbox
     restart: unless-stopped
     environment:
+      <<: *run-settings
       SANDBOX_TOKEN: ${SANDBOX_TOKEN:?set SANDBOX_TOKEN in .env}
       SANDBOX_CONCURRENCY: ${SANDBOX_CONCURRENCY:-4}
-      SANDBOX_DOCKER_RUNTIME: ${SANDBOX_DOCKER_RUNTIME:-}
-      SANDBOX_NETWORK: ${SANDBOX_NETWORK:-none}
-      SANDBOX_IMAGE_NODE: ${SANDBOX_IMAGE_NODE:-node:22-alpine}
-      SANDBOX_IMAGE_PYTHON: ${SANDBOX_IMAGE_PYTHON:-python:3.12-alpine}
-      SANDBOX_IMAGE_GO: ${SANDBOX_IMAGE_GO:-golang:1.23-alpine}
+      SANDBOX_OWNER_CONCURRENCY: ${SANDBOX_OWNER_CONCURRENCY:-}
+      # no socket here: Docker is reached only through the guard below
+      DOCKER_HOST: tcp://docker-guard:2375
+    depends_on:
+      docker-guard:
+        condition: service_healthy
+    networks: [internal, docker-api]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  # The only service with the Docker socket, which is root-equivalent on the host. It passes on just the calls the
+  # sandbox needs, for run containers it rebuilds with the hardening flags (apps/sandbox/src/docker-policy.mjs).
+  docker-guard:
+    build: ./apps/sandbox
+    command: ["node", "src/docker-guard.mjs"]
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      <<: *run-settings
+      PORT: "2375"
     volumes:
-      # root-equivalent on the host: only this service gets it, and it is never published
       - /var/run/docker.sock:/var/run/docker.sock
-    networks: [internal]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2375/_ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [docker-api]
     read_only: true
     tmpfs: [/tmp]
     security_opt: [no-new-privileges:true]
@@ -64,6 +97,9 @@ services:
 
 networks:
   internal:
+    internal: true
+  # the sandbox and the guard only: the app cannot reach the Docker API
+  docker-api:
     internal: true
 
 volumes:
