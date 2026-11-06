@@ -7,6 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 DB_PROVIDER = "postgres"
 APP_URL = "http://localhost:5173"
 ALLOW_PRIVATE_TARGETS = "false"
+# "closed" allows only the first account and refuses every sign-up after it.
+SIGNUP = "open"
 
 [secrets]
 required = ["BETTER_AUTH_SECRET", "DATABASE_URL"]

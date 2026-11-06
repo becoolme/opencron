@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AppHonoEnv } from "./types";
-import { authHandler, sessionAuthMiddleware } from "./auth";
+import { authHandler, sessionAuthMiddleware, signUpAllowed } from "./auth";
 import { jobsRouter } from "./routes/jobs";
 import { executionsRouter } from "./routes/executions";
 import { availableRuntimes } from "./runtimes";
@@ -10,6 +10,9 @@ export const app = new Hono<AppHonoEnv>();
 
 // Better Auth handles registration, login, logout, and session endpoints.
 app.all("/api/auth/*", (c) => authHandler(c.env, c.req.raw));
+
+// Public, before the session check: what the sign-in page may offer.
+app.get("/api/instance", async (c) => c.json({ sign_up: await signUpAllowed(c.env) }));
 
 // API group, all protected
 const api = new Hono<AppHonoEnv>();

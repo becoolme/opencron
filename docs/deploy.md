@@ -37,5 +37,6 @@ To use Postgres instead of D1, follow [database.md](database.md) and use `pnpm d
 | --- | --- | --- |
 | `APP_URL` | `http://localhost:5173` | Public URL of the deployment. Sign-in is accepted from its host and from localhost. |
 | `ALLOW_PRIVATE_TARGETS` | `false` | `true` lets HTTP jobs and alert webhooks call private or internal addresses. |
+| `SIGNUP` | `open` | `closed` lets only the first account sign up; later sign-ups are refused. The Docker setup defaults to `closed`. |
 | `DB_PROVIDER` | `d1` | `postgres` reads `DATABASE_URL` or a Hyperdrive binding instead. |
 | `BETTER_AUTH_SECRET` | (secret) | At least 32 random characters. |

@@ -1,3 +1,4 @@
+import { signUpMode } from "./sign-up";
 import type { Env } from "./types";
 
 /**
@@ -26,7 +27,9 @@ export function nodeConfig(vars: Record<string, string | undefined>): { env: Env
     ALLOW_PRIVATE_TARGETS: vars.ALLOW_PRIVATE_TARGETS,
     SANDBOX_URL: vars.SANDBOX_URL || undefined,
     SANDBOX_TOKEN: vars.SANDBOX_TOKEN || undefined,
+    SIGNUP: vars.SIGNUP || undefined,
   };
+  signUpMode(env);
   if (env.SANDBOX_URL && !env.SANDBOX_TOKEN) throw new Error("SANDBOX_TOKEN is required when SANDBOX_URL is set");
   const warnings = env.SANDBOX_URL ? [] : ["SANDBOX_URL is not set: script jobs cannot run on this deployment"];
   return { env, port, warnings };

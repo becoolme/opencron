@@ -224,5 +224,6 @@ export const ko: Record<string, string> = {
   "Run succeeded in {time}": "{time} 만에 실행에 성공했어요",
   "Remove {channel}": "{channel} 제거",
   "Sign up": "가입하기",
+  "Sign-up is closed on this deployment. Ask its administrator for an account.": "이 서버는 가입을 받지 않습니다. 계정이 필요하면 관리자에게 요청하세요.",
   "Your name": "이름",
 };

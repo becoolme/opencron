@@ -11,6 +11,8 @@ DB_PROVIDER = "d1"
 APP_URL = "http://localhost:5173"
 # "true" lets HTTP jobs and webhooks call private or internal addresses.
 ALLOW_PRIVATE_TARGETS = "false"
+# "closed" allows only the first account and refuses every sign-up after it.
+SIGNUP = "open"
 
 [secrets]
 required = ["BETTER_AUTH_SECRET"]

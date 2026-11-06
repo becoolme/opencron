@@ -20,6 +20,8 @@ export interface Env {
   SANDBOX_TOKEN?: string;
   /** "true" lets HTTP jobs and webhooks reach private or internal addresses. Off by default. */
   ALLOW_PRIVATE_TARGETS?: string;
+  /** "open" (default) or "closed": closed allows only the first account. */
+  SIGNUP?: string;
 }
 
 export type AppHonoEnv = {

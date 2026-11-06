@@ -224,5 +224,6 @@ export const zh: Record<string, string> = {
   "Run succeeded in {time}": "运行成功，耗时 {time}",
   "Remove {channel}": "移除告警渠道：{channel}",
   "Sign up": "注册",
+  "Sign-up is closed on this deployment. Ask its administrator for an account.": "本站已关闭注册，需要账号请联系管理员。",
   "Your name": "名字",
 };

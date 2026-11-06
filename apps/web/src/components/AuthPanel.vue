@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { authClient } from "../auth-client";
 import { t } from "../i18n";
 import LangSwitch from "./LangSwitch.vue";
@@ -17,6 +17,18 @@ const pending = ref(false);
 const error = ref("");
 
 const isSignUp = computed(() => mode.value === "sign-up");
+// the deployment may allow only its first account (SIGNUP=closed); offer sign-up only when it would work
+const signUpOpen = ref(true);
+
+onMounted(async () => {
+  try {
+    const res = await fetch("/api/instance", { credentials: "same-origin" });
+    if (res.ok) signUpOpen.value = ((await res.json()) as { sign_up?: boolean }).sign_up !== false;
+  } catch {
+    // keep offering sign-up; the server refuses it if it is closed
+  }
+  if (!signUpOpen.value) switchMode("sign-in");
+});
 
 function switchMode(next: "sign-in" | "sign-up"): void {
   mode.value = next;
@@ -72,10 +84,12 @@ async function submit(): Promise<void> {
         {{ t("Schedule HTTP calls and sandboxed scripts with cron.") }}
       </p>
 
-      <div class="seg tabs" role="tablist">
+      <div v-if="signUpOpen" class="seg tabs" role="tablist">
         <button type="button" role="tab" :class="{ on: !isSignUp }" :aria-selected="!isSignUp" @click="switchMode('sign-in')">{{ t("Sign in") }}</button>
         <button type="button" role="tab" :class="{ on: isSignUp }" :aria-selected="isSignUp" @click="switchMode('sign-up')">{{ t("Sign up") }}</button>
       </div>
+
+      <p v-else class="muted" style="margin: 0 0 20px; font-size: 14px">{{ t("Sign-up is closed on this deployment. Ask its administrator for an account.") }}</p>
 
       <form class="fields" @submit.prevent="submit">
         <label v-if="isSignUp" class="fld">

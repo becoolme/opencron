@@ -1,6 +1,8 @@
 import { authPool, databaseProvider, getDatabase } from "./database";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import type { MiddlewareHandler } from "hono";
+import { signUpMode } from "./sign-up";
 import type { AppHonoEnv, Env } from "./types";
 
 /** The host of APP_URL (where this deployment is served), which sign-in requests may come from besides localhost. */
@@ -11,6 +13,11 @@ function appHosts(env: Env): string[] {
   } catch {
     throw new Error(`APP_URL is not a URL: ${env.APP_URL}`);
   }
+}
+
+export async function signUpAllowed(env: Env): Promise<boolean> {
+  if (signUpMode(env) === "open") return true;
+  return !(await getDatabase(env).prepare('SELECT 1 AS one FROM "user" LIMIT 1').first());
 }
 
 export function createAuth(env: Env) {
@@ -31,6 +38,11 @@ export function createAuth(env: Env) {
     databaseHooks: {
       user: {
         create: {
+          before: async () => {
+            if (!(await signUpAllowed(env))) {
+              throw new APIError("FORBIDDEN", { message: "Sign-up is closed on this deployment" });
+            }
+          },
           after: async (user) => {
             // Preserve pre-authentication jobs by assigning them to the first
             // user created after this migration.

@@ -224,5 +224,6 @@ export const ja: Record<string, string> = {
   "Run succeeded in {time}": "{time} で実行に成功しました",
   "Remove {channel}": "{channel} を削除",
   "Sign up": "新規登録",
+  "Sign-up is closed on this deployment. Ask its administrator for an account.": "このサーバーでは新規登録を受け付けていません。アカウントは管理者に依頼してください。",
   "Your name": "お名前",
 };
