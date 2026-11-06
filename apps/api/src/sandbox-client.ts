@@ -15,6 +15,8 @@ export interface SandboxRequest {
   context: Record<string, unknown>;
   /** The account the job belongs to; the sandbox limits how many of its slots one account holds. */
   owner?: string;
+  /** The account's secrets, set as environment variables in the container. */
+  env?: Record<string, string>;
 }
 
 /**

@@ -60,3 +60,17 @@ test("operator options are applied", () => {
 test("unknown runtimes are refused", () => {
   assert.throws(() => dockerArgs({ runtime: "bash", name: "a", context: "{}" }), /Unknown runtime/);
 });
+
+test("secrets are named in the args but their values are not", () => {
+  const args = dockerArgs({ runtime: "python", name: "a", context: "{}", secretNames: ["API_TOKEN", "DB_URL"] });
+  assert.ok(args.includes("OPENCRON_SECRET_NAMES=API_TOKEN,DB_URL"));
+  const passed = args.filter((arg, i) => args[i - 1] === "--env" && !arg.includes("="));
+  assert.deepEqual(passed, ["API_TOKEN", "DB_URL"]);
+  // the image and command come after every --env
+  assert.ok(args.lastIndexOf("--env") < args.indexOf("--entrypoint"));
+});
+
+test("a run without secrets names none", () => {
+  const args = dockerArgs({ runtime: "javascript", name: "a", context: "{}" });
+  assert.ok(!args.some((arg) => arg.startsWith("OPENCRON_SECRET_NAMES=")));
+});

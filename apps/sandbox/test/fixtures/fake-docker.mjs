@@ -1,7 +1,7 @@
 /**
  * Stands in for the docker CLI in the sandbox server tests. Each call is appended to $FAKE_DOCKER_LOG as one JSON line.
  * A `docker run` acts on the script it receives on stdin:
- *   echo       prints the arguments and the script back as JSON
+ *   echo       prints the arguments, the script and the bare `--env NAME` values it would pass on, as JSON
  *   fail       writes "boom" to stderr and exits 3
  *   flood      writes 200 KB to stdout and to stderr
  *   hang       never exits
@@ -31,7 +31,10 @@ for await (const chunk of process.stdin) source += chunk;
 log({ cmd: "run", args, source: source.slice(0, 100) });
 
 if (source === "echo") {
-  process.stdout.write(JSON.stringify({ args, source }));
+  // `--env NAME` without a value takes it from this process's environment, as the real CLI does
+  const passed = {};
+  args.forEach((arg, i) => { if (arg === "--env" && !args[i + 1].includes("=")) passed[args[i + 1]] = process.env[args[i + 1]] ?? null; });
+  process.stdout.write(JSON.stringify({ args, source, env: passed, sandboxToken: process.env.SANDBOX_TOKEN ?? null }));
 } else if (source === "fail") {
   process.stderr.write("boom");
   process.exitCode = 3;

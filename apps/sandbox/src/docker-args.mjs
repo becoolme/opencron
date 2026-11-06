@@ -21,13 +21,15 @@ export const NODE_HARNESS = `
 const mod = await import("/tmp/main.mjs");
 const entry = mod.default;
 const context = process.env.OPENCRON_CONTEXT ?? "{}";
+// the account's secrets, as env.NAME, the way a Cloudflare script reads them
+const env = Object.fromEntries((process.env.OPENCRON_SECRET_NAMES ?? "").split(",").filter(Boolean).map((name) => [name, process.env[name]]));
 const waits = [];
 const ctx = { waitUntil: (p) => waits.push(p), passThroughOnException() {} };
 let res;
 if (entry && typeof entry.fetch === "function") {
-  res = await entry.fetch(new Request("https://opencron.internal/run", { method: "POST", body: context, headers: { "content-type": "application/json" } }), {}, ctx);
+  res = await entry.fetch(new Request("https://opencron.internal/run", { method: "POST", body: context, headers: { "content-type": "application/json" } }), env, ctx);
 } else if (typeof entry === "function") {
-  res = await entry(JSON.parse(context), {}, ctx);
+  res = await entry(JSON.parse(context), env, ctx);
 } else {
   throw new Error("The script must export default { fetch } or a default function");
 }
@@ -75,13 +77,17 @@ const PROFILES = {
 };
 
 /**
- * @param {{ runtime: string, name: string, context: string, image?: string, network?: string, dockerRuntime?: string }} options
+ * `secretNames` are passed as bare `--env NAME`: Docker takes each value from the environment of the docker CLI, so no
+ * secret value ever appears in a process's arguments.
+ *
+ * @param {{ runtime: string, name: string, context: string, image?: string, network?: string, dockerRuntime?: string, secretNames?: string[] }} options
  * @returns {string[]}
  */
-export function dockerArgs({ runtime, name, context, image, network, dockerRuntime }) {
+export function dockerArgs({ runtime, name, context, image, network, dockerRuntime, secretNames = [] }) {
   const profile = PROFILES[runtime];
   if (!profile) throw new Error(`Unknown runtime: ${runtime}`);
   const env = { HOME: "/tmp", OPENCRON_CONTEXT: context, ...profile.env(NODE_HARNESS) };
+  if (secretNames.length) env.OPENCRON_SECRET_NAMES = secretNames.join(",");
   const args = [
     "run", "--rm", "-i",
     "--name", name,
@@ -104,6 +110,7 @@ export function dockerArgs({ runtime, name, context, image, network, dockerRunti
   ];
   if (dockerRuntime) args.push("--runtime", dockerRuntime);
   for (const [key, value] of Object.entries(env)) args.push("--env", `${key}=${value}`);
+  for (const secret of secretNames) args.push("--env", secret);
   args.push("--entrypoint", "/bin/sh", image || DEFAULT_IMAGES[runtime], "-c", profile.command);
   return args;
 }

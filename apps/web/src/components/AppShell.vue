@@ -11,7 +11,8 @@ defineProps<{ user: { name: string; email: string }; crumbs: { label: string; hr
 const emit = defineEmits<{ signOut: [] }>();
 
 const failing = computed(() => jobs.value.filter((job) => job.enabled && job.last_status === "failed").length);
-const onJobs = computed(() => route.value.name !== "runs");
+const onJobs = computed(() => ["jobs", "new", "job", "edit"].includes(route.value.name));
+const on = (name: string) => route.value.name === name;
 const menuOpen = ref(false);
 const menuButton = ref<HTMLButtonElement | null>(null);
 
@@ -49,9 +50,12 @@ function closeMenu(): void {
         <a class="nav" :class="{ on: onJobs }" :href="href.jobs" :aria-current="onJobs ? 'page' : undefined">
           <Icon name="list" /><span>{{ t("Cron jobs") }}</span><em>{{ jobs.length }}</em>
         </a>
-        <a class="nav" :class="{ on: !onJobs }" :href="href.runs" :aria-current="!onJobs ? 'page' : undefined">
+        <a class="nav" :class="{ on: on('runs') }" :href="href.runs" :aria-current="on('runs') ? 'page' : undefined">
           <Icon name="activity" /><span>{{ t("Runs") }}</span>
           <em v-if="failing" class="bad" :title="t('Jobs whose last run failed')">{{ failing }}</em>
+        </a>
+        <a class="nav" :class="{ on: on('secrets') }" :href="href.secrets" :aria-current="on('secrets') ? 'page' : undefined">
+          <Icon name="lock" /><span>{{ t("Secrets") }}</span>
         </a>
       </nav>
       <div class="side-foot">

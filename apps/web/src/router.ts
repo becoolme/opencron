@@ -62,6 +62,7 @@ document.addEventListener("click", (event) => {
 export const href = {
   get jobs() { return localePath(lang.value, "/"); },
   get runs() { return localePath(lang.value, "/runs"); },
+  get secrets() { return localePath(lang.value, "/secrets"); },
   get newJob() { return localePath(lang.value, "/jobs/new"); },
   job: (id: number) => localePath(lang.value, `/jobs/${id}`),
   edit: (id: number) => localePath(lang.value, `/jobs/${id}/edit`),

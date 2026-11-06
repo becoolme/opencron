@@ -113,7 +113,7 @@ describe("a running sandbox", () => {
   });
 
   test("refuses an oversized body", async () => {
-    const res = await run(sandbox, { runtime: "python", source: "echo", pad: "x".repeat(700 * 1024) }).catch((error) => error);
+    const res = await run(sandbox, { runtime: "python", source: "echo", pad: "x".repeat(720 * 1024) }).catch((error) => error);
     // the server answers 413 and drops the connection; either is a refusal
     if (res instanceof Response) assert.equal(res.status, 413);
     else assert.ok(res instanceof Error);
@@ -132,6 +132,25 @@ describe("a running sandbox", () => {
     assert.ok(args.includes("python:3.12-alpine"));
     assert.ok(args.includes(`OPENCRON_CONTEXT=${JSON.stringify({ job: { id: 7 } })}`));
     assert.match(args[args.indexOf("--name") + 1], /^opencron-run-[0-9a-f]{16}$/);
+  });
+
+  test("passes secrets through the docker CLI's environment, not its arguments", async () => {
+    const res = await run(sandbox, { runtime: "python", source: "echo", env: { API_TOKEN: "s3cret-value", WEBHOOK_URL: "https://hook.example.com/x" } });
+    assert.equal(res.status, 200);
+    const { args, env, sandboxToken } = JSON.parse((await res.json()).stdout);
+    assert.deepEqual(env, { API_TOKEN: "s3cret-value", WEBHOOK_URL: "https://hook.example.com/x" });
+    assert.ok(!args.some((arg) => arg.includes("s3cret-value")));
+    assert.ok(args.includes("OPENCRON_SECRET_NAMES=API_TOKEN,WEBHOOK_URL"));
+    // the sandbox's own token is not in the CLI's environment
+    assert.equal(sandboxToken, null);
+  });
+
+  test("refuses secrets that would override the runtime", async () => {
+    const before = sandbox.calls().filter((c) => c.cmd === "run").length;
+    for (const env of [{ PATH: "/tmp" }, { LD_PRELOAD: "/tmp/x.so" }, { OPENCRON_HARNESS: "x" }, { lower: "x" }, ["x"], { A: 1 }]) {
+      assert.equal((await run(sandbox, { runtime: "python", source: "echo", env })).status, 400, JSON.stringify(env));
+    }
+    assert.equal(sandbox.calls().filter((c) => c.cmd === "run").length, before);
   });
 
   test("returns the exit code and stderr of a failed script", async () => {

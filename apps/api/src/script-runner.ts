@@ -3,12 +3,14 @@ import type { Env, JobRow } from "./types";
 import type { WorkerCode } from "./loader-types";
 import type { RunResult } from "./runner";
 import { runInSandbox, tail } from "./sandbox-client";
+import { maskSecrets, secretsFingerprint, secretsForRun } from "./secrets";
 
 type DynamicBindings = {
   db?: unknown;
   DB?: unknown;
   D1?: unknown;
   KV?: unknown;
+  [secret: string]: unknown;
 };
 
 export type LoaderExecutionContext = object;
@@ -18,8 +20,10 @@ export function buildWorkerCode(
   source: string,
   ctx?: LoaderExecutionContext,
   storageScope?: Pick<JobRow, "id" | "owner_user_id">,
+  secrets: Record<string, string> = {},
 ): WorkerCode {
-  const childEnv: DynamicBindings = {};
+  // the account's secrets, as plain strings; their names cannot shadow the bindings set below
+  const childEnv: DynamicBindings = { ...secrets };
 
   const ctxExports = (ctx as { readonly exports?: unknown } | undefined)?.exports;
   if (ctxExports && storageScope?.owner_user_id) {
@@ -57,14 +61,18 @@ export async function runScriptJob(env: Env, job: JobRow, ctx?: LoaderExecutionC
   let ok = false;
   let error: string | null = null;
   let response_snippet: string | null = null;
+  let secrets: Record<string, string> = {};
 
   try {
     if (!job.script) throw new Error("script is empty");
     const runtime = job.runtime ?? "javascript";
+    secrets = await secretsForRun(env, job.owner_user_id);
     if (runtime === "javascript" && env.LOADER) {
+      // a changed secret gets a fresh isolate rather than one holding the old values
+      const fingerprint = await secretsFingerprint(secrets);
       const handle = env.LOADER.get(
-        `job-${job.id}-v${job.script_version}`,
-        () => buildWorkerCode(env, job.script!, ctx, job),
+        `job-${job.id}-v${job.script_version}${fingerprint ? `-s${fingerprint}` : ""}`,
+        () => buildWorkerCode(env, job.script!, ctx, job, secrets),
       );
       const entrypoint = handle.getEntrypoint();
       const req = new Request("https://opencron.internal/run", {
@@ -90,6 +98,7 @@ export async function runScriptJob(env: Env, job: JobRow, ctx?: LoaderExecutionC
         timeout_ms: job.timeout_ms,
         context: { jobId: job.id, jobName: job.name, scheduledAt: started_at, invocation: "cron" },
         owner: job.owner_user_id ?? undefined,
+        env: secrets,
       });
       ok = run.exit_code === 0 && !run.timed_out;
       response_snippet = run.stdout ? tail(run.stdout, 500) : null;
@@ -101,6 +110,10 @@ export async function runScriptJob(env: Env, job: JobRow, ctx?: LoaderExecutionC
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }
+
+  // a script that prints a secret does not leave it in the run history
+  error = maskSecrets(error, secrets);
+  response_snippet = maskSecrets(response_snippet, secrets);
 
   const duration_ms = Date.now() - t0;
   const ok_int = ok ? 1 : 0;

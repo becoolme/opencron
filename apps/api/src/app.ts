@@ -3,6 +3,7 @@ import type { AppHonoEnv } from "./types";
 import { authHandler, sessionAuthMiddleware, signUpAllowed } from "./auth";
 import { jobsRouter } from "./routes/jobs";
 import { executionsRouter } from "./routes/executions";
+import { secretsRouter } from "./routes/secrets";
 import { availableRuntimes } from "./runtimes";
 
 /** The HTTP API, shared by the Worker (index.ts) and the Node server (server.ts). */
@@ -19,6 +20,7 @@ const api = new Hono<AppHonoEnv>();
 api.use("*", sessionAuthMiddleware);
 api.route("/jobs", jobsRouter);
 api.route("/executions", executionsRouter);
+api.route("/secrets", secretsRouter);
 // What this deployment can do, so the app only offers what will run.
 api.get("/meta", (c) => c.json({ runtimes: availableRuntimes(c.env) }));
 

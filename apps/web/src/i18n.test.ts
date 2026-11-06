@@ -30,6 +30,7 @@ describe("language paths", () => {
     expect(parse(splitPath("/ko/jobs/7/edit").rest)).toEqual({ name: "edit", id: 7 });
     expect(parse("/jobs/new")).toEqual({ name: "new" });
     expect(parse("/runs/")).toEqual({ name: "runs" });
+    expect(parse("/secrets")).toEqual({ name: "secrets" });
     expect(parse("/nowhere")).toEqual({ name: "jobs" });
   });
 });

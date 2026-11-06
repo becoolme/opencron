@@ -3,6 +3,7 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { DEFAULT_IMAGES, RUNTIMES, dockerArgs } from "./docker-args.mjs";
 import { RunQueue } from "./run-queue.mjs";
+import { readSecrets } from "./secret-names.mjs";
 
 /**
  * The OpenCron sandbox: runs one Node, Python or Go script per request, each in a fresh locked-down container.
@@ -27,7 +28,8 @@ const IMAGES = {
   go: process.env.SANDBOX_IMAGE_GO || DEFAULT_IMAGES.go,
 };
 const MAX_SOURCE = 512 * 1024;
-const MAX_BODY = MAX_SOURCE + 128 * 1024;
+// the source, the context and up to 64 KB of secrets
+const MAX_BODY = MAX_SOURCE + 192 * 1024;
 const MAX_OUTPUT = 64 * 1024;
 const MAX_TIMEOUT = 300_000;
 // Go compiles before it runs; give it room on top of the job's own timeout.
@@ -39,10 +41,14 @@ if (NETWORK !== "none") {
 
 const queue = new RunQueue({ concurrency: CONCURRENCY, perOwner: OWNER_CONCURRENCY });
 
-function docker(args, { stdin, timeoutMs, name } = {}) {
+// What the docker CLI runs with: this process's environment without the sandbox's own settings, so the token stays here.
+const CLI_ENV = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("SANDBOX_")));
+
+/** `secrets` are added to the CLI's environment, where `--env NAME` in the args picks them up. */
+function docker(args, { stdin, timeoutMs, name, secrets } = {}) {
   return new Promise((resolve) => {
     const started = Date.now();
-    const child = spawn("docker", args, { stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn("docker", args, { stdio: ["pipe", "pipe", "pipe"], env: { ...CLI_ENV, ...secrets } });
     const out = { stdout: "", stderr: "" };
     const collect = (key) => (chunk) => {
       if (out[key].length < MAX_OUTPUT) out[key] += chunk.toString("utf8").slice(0, MAX_OUTPUT - out[key].length);
@@ -99,11 +105,14 @@ async function run(input) {
   const timeout = Math.min(Math.max(Number(input.timeout_ms) || 30_000, 1_000), MAX_TIMEOUT);
   const context = JSON.stringify(input.context ?? {});
   const owner = typeof input.owner === "string" ? input.owner.slice(0, 200) : "";
+  const secrets = readSecrets(input.env);
   const name = `opencron-run-${randomBytes(8).toString("hex")}`;
-  const args = dockerArgs({ runtime, name, context, image: IMAGES[runtime], network: NETWORK, dockerRuntime: DOCKER_RUNTIME });
+  const args = dockerArgs({
+    runtime, name, context, image: IMAGES[runtime], network: NETWORK, dockerRuntime: DOCKER_RUNTIME, secretNames: Object.keys(secrets),
+  });
   await queue.acquire(owner);
   try {
-    const result = await docker(args, { stdin: source, timeoutMs: timeout + STARTUP_GRACE[runtime], name });
+    const result = await docker(args, { stdin: source, timeoutMs: timeout + STARTUP_GRACE[runtime], name, secrets });
     // Docker reports its own failures (missing image, daemon down) as 125
     if (result.exit_code === 125 && !result.timed_out) console.error(`docker run failed: ${result.stderr.slice(0, 500)}`);
     return result;

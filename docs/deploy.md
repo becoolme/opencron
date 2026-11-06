@@ -19,7 +19,7 @@ binding (for script jobs). The commands run from the repository root.
 
    ```bash
    pnpm db:init:remote
-   pnpm db:migrate:remote:0002   # …through 0007
+   pnpm db:migrate:remote:0002   # …through 0008
    pnpm --filter @opencron/api exec wrangler secret put BETTER_AUTH_SECRET
    ```
 
@@ -39,4 +39,4 @@ To use Postgres instead of D1, follow [database.md](database.md) and use `pnpm d
 | `ALLOW_PRIVATE_TARGETS` | `false` | `true` lets HTTP jobs and alert webhooks call private or internal addresses. |
 | `SIGNUP` | `open` | `closed` lets only the first account sign up; later sign-ups are refused. The Docker setup defaults to `closed`. |
 | `DB_PROVIDER` | `d1` | `postgres` reads `DATABASE_URL` or a Hyperdrive binding instead. |
-| `BETTER_AUTH_SECRET` | (secret) | At least 32 random characters. |
+| `BETTER_AUTH_SECRET` | (secret) | At least 32 random characters. It also encrypts the values on the Secrets page: changing it signs everyone out and leaves those values unreadable until they are saved again. |

@@ -21,6 +21,8 @@
     "db:migrate:remote:0006": "wrangler d1 execute DB --remote --file=./migrations/0006_script_tables.sql",
     "db:migrate:local:0007": "wrangler d1 execute DB --local --file=./migrations/0007_script_runtime.sql",
     "db:migrate:remote:0007": "wrangler d1 execute DB --remote --file=./migrations/0007_script_runtime.sql",
+    "db:migrate:local:0008": "wrangler d1 execute DB --local --file=./migrations/0008_secrets.sql",
+    "db:migrate:remote:0008": "wrangler d1 execute DB --remote --file=./migrations/0008_secrets.sql",
     "test:postgres": "tsx scripts/test-postgres.ts",
     "test:smoke": "tsx scripts/smoke-database.ts",
     "typecheck": "tsc --noEmit",

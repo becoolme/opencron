@@ -55,6 +55,9 @@ The `sandbox` service starts each run with `docker run` and these limits:
   `GOFLAGS=-p=1` and `GOMAXPROCS=1` so that its compiler, which otherwise starts a worker per host CPU, stays within
   them;
 - no volumes, no Docker socket, no environment from the host; the image is never pulled at run time;
+- the account's [secrets](scripts.md#secrets) as environment variables, passed to `docker run` by name (`--env NAME`)
+  so their values never appear on its command line; names the runtimes rely on are refused, so a secret cannot change
+  `PATH`, `LD_PRELOAD` or the harness settings;
 - killed once the job's timeout passes (Go gets 30 seconds on top for compiling, the others 2 seconds); the container is
   removed afterwards.
 

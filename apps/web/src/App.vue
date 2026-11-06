@@ -7,6 +7,7 @@ import JobDetail from "./components/JobDetail.vue";
 import JobEditor from "./components/JobEditor.vue";
 import JobsList from "./components/JobsList.vue";
 import RunsPage from "./components/RunsPage.vue";
+import SecretsPage from "./components/SecretsPage.vue";
 import { t } from "./i18n";
 import { href, route } from "./router";
 import { jobsById, loadError, loadMeta, loaded, refresh, reset } from "./store";
@@ -54,6 +55,7 @@ const crumbs = computed(() => {
   const r = route.value;
   switch (r.name) {
     case "runs": return [{ label: t("Runs") }];
+    case "secrets": return [{ label: t("Secrets") }];
     case "new": return [jobs, { label: t("New job") }];
     case "job": return [jobs, { label: jobsById.value.get(r.id)?.name ?? `#${r.id}` }];
     case "edit": return [jobs, { label: jobsById.value.get(r.id)?.name ?? `#${r.id}`, href: href.job(r.id) }, { label: t("Edit") }];
@@ -90,6 +92,7 @@ async function signOut(): Promise<void> {
     <template v-else>
       <JobsList v-if="route.name === 'jobs'" />
       <RunsPage v-else-if="route.name === 'runs'" />
+      <SecretsPage v-else-if="route.name === 'secrets'" @toast="showToast" />
       <JobEditor v-else-if="route.name === 'new'" key="new" @toast="showToast" />
       <JobEditor v-else-if="route.name === 'edit'" :key="`edit-${route.id}`" :id="route.id" @toast="showToast" />
       <JobDetail v-else-if="route.name === 'job'" :id="route.id" @toast="showToast" />
