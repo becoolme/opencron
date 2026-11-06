@@ -89,6 +89,7 @@ export async function runScriptJob(env: Env, job: JobRow, ctx?: LoaderExecutionC
         source: job.script,
         timeout_ms: job.timeout_ms,
         context: { jobId: job.id, jobName: job.name, scheduledAt: started_at, invocation: "cron" },
+        owner: job.owner_user_id ?? undefined,
       });
       ok = run.exit_code === 0 && !run.timed_out;
       response_snippet = run.stdout ? tail(run.stdout, 500) : null;

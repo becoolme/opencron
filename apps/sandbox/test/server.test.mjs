@@ -13,6 +13,8 @@ import { after, before, describe, test } from "node:test";
 const SERVER = new URL("../src/server.mjs", import.meta.url).pathname;
 const FAKE_DOCKER = new URL("./fixtures/fake-docker.mjs", import.meta.url).pathname;
 const TOKEN = "test-sandbox-token-0123456789";
+// plain tags keep the assertions readable; the pinned defaults are checked in docker-policy.test.mjs
+const IMAGES = { SANDBOX_IMAGE_NODE: "node:22-alpine", SANDBOX_IMAGE_PYTHON: "python:3.12-alpine", SANDBOX_IMAGE_GO: "golang:1.23-alpine" };
 
 const dir = mkdtempSync(join(tmpdir(), "opencron-sandbox-test-"));
 writeFileSync(join(dir, "docker"), `#!/bin/sh\nexec "${process.execPath}" "${FAKE_DOCKER}" "$@"\n`);
@@ -34,7 +36,7 @@ async function start(env = {}) {
   const log = join(dir, `docker-${port}.log`);
   writeFileSync(log, "");
   const child = spawn(process.execPath, [SERVER], {
-    env: { PATH: `${dir}:${process.env.PATH}`, SANDBOX_TOKEN: TOKEN, PORT: String(port), FAKE_DOCKER_LOG: log, ...env },
+    env: { PATH: `${dir}:${process.env.PATH}`, SANDBOX_TOKEN: TOKEN, PORT: String(port), FAKE_DOCKER_LOG: log, ...IMAGES, ...env },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let output = "";
@@ -171,6 +173,23 @@ describe("under load", () => {
       // each run starts only after the previous one finished
       const events = sandbox.calls().filter((c) => c.cmd === "run" || c.cmd === "done").map((c) => c.cmd);
       assert.deepEqual(events, Array.from({ length: 9 }, () => ["run", "done"]).flat());
+    } finally {
+      await sandbox.stop();
+    }
+  });
+
+  test("keeps one account to its share of the slots", async () => {
+    const sandbox = await start({ SANDBOX_CONCURRENCY: "2" });
+    try {
+      const slow = (owner, ms) => run(sandbox, { runtime: "javascript", source: `slow:${ms}`, owner });
+      const busy = [slow("busy", 800), slow("busy", 800), slow("busy", 800)];
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const started = Date.now();
+      const other = await slow("other", 50);
+      assert.equal(other.status, 200);
+      // the other account took the second slot instead of waiting ~700 ms behind the busy one
+      assert.ok(Date.now() - started < 500, `waited ${Date.now() - started} ms`);
+      assert.deepEqual((await Promise.all(busy)).map((res) => res.status), [200, 200, 200]);
     } finally {
       await sandbox.stop();
     }

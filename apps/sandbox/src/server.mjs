@@ -2,10 +2,12 @@ import { spawn } from "node:child_process";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { DEFAULT_IMAGES, RUNTIMES, dockerArgs } from "./docker-args.mjs";
+import { RunQueue } from "./run-queue.mjs";
 
 /**
  * The OpenCron sandbox: runs one Node, Python or Go script per request, each in a fresh locked-down container.
- * It is the only service that holds the Docker socket, and it is reachable only on the internal compose network.
+ * It reaches Docker through the guard (docker-guard.mjs), not the socket, and is reachable only on the internal compose
+ * network.
  */
 
 const TOKEN = process.env.SANDBOX_TOKEN ?? "";
@@ -15,7 +17,8 @@ if (TOKEN.length < 16 || /^change-me/i.test(TOKEN)) {
 }
 const PORT = Number(process.env.PORT ?? 8787);
 const CONCURRENCY = Math.max(1, Number(process.env.SANDBOX_CONCURRENCY ?? 4));
-const QUEUE_LIMIT = CONCURRENCY * 8;
+// one account may hold this many of the slots, so it cannot keep everyone else's scripts waiting
+const OWNER_CONCURRENCY = Math.max(1, Number(process.env.SANDBOX_OWNER_CONCURRENCY) || Math.floor(CONCURRENCY / 2));
 const NETWORK = process.env.SANDBOX_NETWORK || "none";
 const DOCKER_RUNTIME = process.env.SANDBOX_DOCKER_RUNTIME || undefined;
 const IMAGES = {
@@ -34,17 +37,7 @@ if (NETWORK !== "none") {
   console.warn(`SANDBOX_NETWORK=${NETWORK}: scripts can reach that network. Keep it away from internal services.`);
 }
 
-let active = 0;
-const waiting = [];
-async function acquire() {
-  if (active < CONCURRENCY) { active++; return; }
-  if (waiting.length >= QUEUE_LIMIT) throw Object.assign(new Error("Sandbox is busy"), { status: 429 });
-  await new Promise((resolve) => waiting.push(resolve));
-}
-function release() {
-  const next = waiting.shift();
-  if (next) next(); else active--;
-}
+const queue = new RunQueue({ concurrency: CONCURRENCY, perOwner: OWNER_CONCURRENCY });
 
 function docker(args, { stdin, timeoutMs, name } = {}) {
   return new Promise((resolve) => {
@@ -105,16 +98,17 @@ async function run(input) {
   }
   const timeout = Math.min(Math.max(Number(input.timeout_ms) || 30_000, 1_000), MAX_TIMEOUT);
   const context = JSON.stringify(input.context ?? {});
+  const owner = typeof input.owner === "string" ? input.owner.slice(0, 200) : "";
   const name = `opencron-run-${randomBytes(8).toString("hex")}`;
   const args = dockerArgs({ runtime, name, context, image: IMAGES[runtime], network: NETWORK, dockerRuntime: DOCKER_RUNTIME });
-  await acquire();
+  await queue.acquire(owner);
   try {
     const result = await docker(args, { stdin: source, timeoutMs: timeout + STARTUP_GRACE[runtime], name });
     // Docker reports its own failures (missing image, daemon down) as 125
     if (result.exit_code === 125 && !result.timed_out) console.error(`docker run failed: ${result.stderr.slice(0, 500)}`);
     return result;
   } finally {
-    release();
+    queue.release(owner);
   }
 }
 
@@ -146,5 +140,5 @@ for (const image of new Set(Object.values(IMAGES))) {
   if (pulled.exit_code !== 0) console.error(`Could not pull ${image}: ${pulled.stderr.slice(0, 300)}`);
 }
 
-server.listen(PORT, () => console.log(`OpenCron sandbox listening on :${PORT} (concurrency ${CONCURRENCY})`));
+server.listen(PORT, () => console.log(`OpenCron sandbox listening on :${PORT} (concurrency ${CONCURRENCY}, ${OWNER_CONCURRENCY} per account)`));
 for (const signal of ["SIGTERM", "SIGINT"]) process.on(signal, () => server.close(() => process.exit(0)));

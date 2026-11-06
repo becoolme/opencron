@@ -13,6 +13,8 @@ export interface SandboxRequest {
   source: string;
   timeout_ms: number;
   context: Record<string, unknown>;
+  /** The account the job belongs to; the sandbox limits how many of its slots one account holds. */
+  owner?: string;
 }
 
 /**
