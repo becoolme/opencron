@@ -213,7 +213,7 @@ export const zh: Record<string, string> = {
   "Header {n} name": "第 {n} 个请求头的名称",
   "Header {n} value": "第 {n} 个请求头的值",
   "Remove header {n}": "删除第 {n} 个请求头",
-  "This deployment can't run {runtime}. Switch to JavaScript or run OpenCron with Docker.": "当前部署不支持运行 {runtime}。请改用 JavaScript，或通过 Docker 部署 OpenCron。",
+  "This deployment can't run {runtime}. Switch to JavaScript, or give the deployment a script sandbox.": "当前部署不支持运行 {runtime}。请改用 JavaScript，或者给这个部署配一个脚本沙箱。",
   "Delete \"{name}\" and its run history?": "删除「{name}」及其所有运行记录？",
   "HTTP job · {method}": "HTTP 任务 · {method}",
   "Script job · {runtime}": "脚本任务 · {runtime}",

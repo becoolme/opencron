@@ -4,8 +4,10 @@ Scheduled HTTP calls and script jobs, with run history and failure alerts. Runs 
 
 - **HTTP jobs** call a URL on a cron schedule and record the status, duration and the start of the response.
 - **Script jobs** run your own JavaScript in an isolated Dynamic Worker on Cloudflare, with a per-job table store, D1
-  facade and KV namespace; with Docker, Node.js, Python and Go scripts run in a locked-down container each. See
-  [docs/scripts.md](docs/scripts.md) and [docs/docker.md](docs/docker.md).
+  facade and KV namespace; with Docker, Node.js, Python and Go scripts run in a locked-down container each. A
+  Cloudflare deployment can add Python and Go by pointing at a sandbox on a server of your own. See
+  [docs/scripts.md](docs/scripts.md), [docs/docker.md](docs/docker.md) and
+  [docs/deploy.md](docs/deploy.md#python-and-go-on-cloudflare).
 - **Alerts** go to Slack, Discord, Telegram, Lark, DingTalk or any HTTP endpoint (optionally HMAC-signed) when a run
   fails.
 - **Accounts** with email and password; every job and its storage belong to one user.

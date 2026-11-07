@@ -213,7 +213,7 @@ export const ja: Record<string, string> = {
   "Header {n} name": "ヘッダー {n} の名前",
   "Header {n} value": "ヘッダー {n} の値",
   "Remove header {n}": "ヘッダー {n} を削除",
-  "This deployment can't run {runtime}. Switch to JavaScript or run OpenCron with Docker.": "このデプロイでは {runtime} を実行できません。JavaScript に切り替えるか、Docker で OpenCron を実行してください。",
+  "This deployment can't run {runtime}. Switch to JavaScript, or give the deployment a script sandbox.": "このデプロイでは {runtime} を実行できません。JavaScript に切り替えるか、デプロイにスクリプトサンドボックスを追加してください。",
   "Delete \"{name}\" and its run history?": "「{name}」と実行履歴を削除しますか？",
   "HTTP job · {method}": "HTTP ジョブ · {method}",
   "Script job · {runtime}": "スクリプトジョブ · {runtime}",

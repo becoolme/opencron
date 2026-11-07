@@ -36,7 +36,7 @@ Timestamps are Unix seconds.
 
 | Method | Path | |
 | --- | --- | --- |
-| `GET` | `/api/meta` | `{runtimes}`: the script runtimes this deployment offers (`javascript` on Cloudflare; `javascript`, `python` and `go` with Docker). |
+| `GET` | `/api/meta` | `{runtimes}`: the script runtimes this deployment offers (`javascript` on Cloudflare; `javascript`, `python` and `go` with Docker or with a sandbox next to Cloudflare). |
 
 ### Jobs
 

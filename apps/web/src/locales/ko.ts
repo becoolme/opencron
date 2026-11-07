@@ -213,7 +213,7 @@ export const ko: Record<string, string> = {
   "Header {n} name": "헤더 {n} 이름",
   "Header {n} value": "헤더 {n} 값",
   "Remove header {n}": "헤더 {n} 삭제",
-  "This deployment can't run {runtime}. Switch to JavaScript or run OpenCron with Docker.": "이 배포 환경에서는 {runtime}을(를) 실행할 수 없어요. JavaScript로 바꾸거나 Docker로 OpenCron을 실행하세요.",
+  "This deployment can't run {runtime}. Switch to JavaScript, or give the deployment a script sandbox.": "이 배포 환경에서는 {runtime}을(를) 실행할 수 없어요. JavaScript로 바꾸거나, 배포에 스크립트 샌드박스를 추가하세요.",
   "Delete \"{name}\" and its run history?": "\"{name}\"과(와) 실행 기록을 삭제할까요?",
   "HTTP job · {method}": "HTTP 작업 · {method}",
   "Script job · {runtime}": "스크립트 작업 · {runtime}",

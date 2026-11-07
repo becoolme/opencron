@@ -13,6 +13,9 @@ APP_URL = "http://localhost:5173"
 ALLOW_PRIVATE_TARGETS = "false"
 # "closed" allows only the first account and refuses every sign-up after it.
 SIGNUP = "open"
+# Optional: a script sandbox on a server of your own, so script jobs can also be Python and Go. Run it with
+# docker-compose.sandbox.yml and set SANDBOX_TOKEN as a secret (docs/deploy.md#python-and-go-on-cloudflare).
+# SANDBOX_URL = "https://sandbox.example.com"
 
 [secrets]
 required = ["BETTER_AUTH_SECRET"]
@@ -44,4 +47,5 @@ binding = "SCRIPT_KV"
 [[worker_loaders]]
 binding = "LOADER"
 
-# Set with `wrangler secret put BETTER_AUTH_SECRET` before deploying.
+# Set with `wrangler secret put BETTER_AUTH_SECRET` before deploying. With SANDBOX_URL, also set SANDBOX_TOKEN, and
+# SANDBOX_ACCESS_CLIENT_ID and SANDBOX_ACCESS_CLIENT_SECRET if the sandbox sits behind Cloudflare Access.

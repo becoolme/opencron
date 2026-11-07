@@ -8,6 +8,7 @@ A script job is code that OpenCron runs on its schedule. Which languages you can
 | --- | --- | --- |
 | Cloudflare (default) | JavaScript | A [Dynamic Worker](https://developers.cloudflare.com/workers/runtime-apis/bindings/worker-loader/): a fresh, isolated Worker created from your code |
 | Docker ([docker.md](docker.md)) | JavaScript (Node.js), Python, Go | A fresh, locked-down container per run |
+| Cloudflare with a sandbox ([deploy.md](deploy.md#python-and-go-on-cloudflare)) | JavaScript in the Worker; Python and Go in the sandbox | As above, per runtime |
 
 On Cloudflare, scripts run on the Workers runtime with the `nodejs_compat` flag, so they are **JavaScript (ES modules)**
 with the Web APIs and the Node.js APIs that Workers support. There is no Python, shell or other interpreter, and no file

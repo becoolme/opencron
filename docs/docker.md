@@ -104,6 +104,9 @@ host's Linux kernel, so a kernel bug could let a script out. If people you do no
 - or run Docker in [rootless mode](https://docs.docker.com/engine/security/rootless/), so the socket is not root;
 - keep the Docker host itself up to date, and do not run other important workloads on it.
 
+To add Python and Go to a deployment on Cloudflare, run only the sandbox with `docker-compose.sandbox.yml`; see
+[deploy.md](deploy.md#python-and-go-on-cloudflare).
+
 If you do not need Python or Go, remove the `sandbox` service and the `SANDBOX_URL` line: the app then refuses script
 jobs, and HTTP jobs keep working.
 

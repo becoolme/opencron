@@ -1,0 +1,80 @@
+# The script sandbox on its own, for an OpenCron deployed on Cloudflare that should also run Python and Go jobs.
+#   cp .env.sandbox.example .env.sandbox && edit it, then:
+#   docker compose -f docker-compose.sandbox.yml --env-file .env.sandbox up -d --build
+# Read docs/deploy.md#python-and-go-on-cloudflare first. No port is published: the Worker reaches the sandbox through
+# the Cloudflare Tunnel run by the cloudflared service below.
+
+# What a script container may be: the sandbox builds runs from these and the guard refuses anything else.
+x-run-settings: &run-settings
+  SANDBOX_DOCKER_RUNTIME: ${SANDBOX_DOCKER_RUNTIME:-}
+  SANDBOX_NETWORK: ${SANDBOX_NETWORK:-none}
+  # empty means the images pinned in apps/sandbox/src/docker-args.mjs
+  SANDBOX_IMAGE_NODE: ${SANDBOX_IMAGE_NODE:-}
+  SANDBOX_IMAGE_PYTHON: ${SANDBOX_IMAGE_PYTHON:-}
+  SANDBOX_IMAGE_GO: ${SANDBOX_IMAGE_GO:-}
+
+services:
+  sandbox:
+    build: ./apps/sandbox
+    restart: unless-stopped
+    environment:
+      <<: *run-settings
+      SANDBOX_TOKEN: ${SANDBOX_TOKEN:?set SANDBOX_TOKEN in .env.sandbox}
+      SANDBOX_CONCURRENCY: ${SANDBOX_CONCURRENCY:-4}
+      SANDBOX_OWNER_CONCURRENCY: ${SANDBOX_OWNER_CONCURRENCY:-}
+      # no socket here: Docker is reached only through the guard below
+      DOCKER_HOST: tcp://docker-guard:2375
+    depends_on:
+      docker-guard:
+        condition: service_healthy
+    networks: [tunnel, docker-api]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  # The only service with the Docker socket, which is root-equivalent on the host (see docs/docker.md).
+  docker-guard:
+    build: ./apps/sandbox
+    command: ["node", "src/docker-guard.mjs"]
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      <<: *run-settings
+      PORT: "2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2375/_ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [docker-api]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+  # Connects out to Cloudflare and forwards the tunnel's public hostname to http://sandbox:8787.
+  cloudflared:
+    image: cloudflare/cloudflared:2025.11.1
+    command: ["tunnel", "--no-autoupdate", "run"]
+    restart: unless-stopped
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env.sandbox}
+    depends_on:
+      sandbox:
+        condition: service_started
+    # default for the outbound connection to Cloudflare, tunnel to reach the sandbox
+    networks: [default, tunnel]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+networks:
+  # cloudflared and the sandbox only; the sandbox itself has no route out
+  tunnel:
+    internal: true
+  # the sandbox and the guard only
+  docker-api:
+    internal: true

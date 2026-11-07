@@ -27,6 +27,8 @@ export function nodeConfig(vars: Record<string, string | undefined>): { env: Env
     ALLOW_PRIVATE_TARGETS: vars.ALLOW_PRIVATE_TARGETS,
     SANDBOX_URL: vars.SANDBOX_URL || undefined,
     SANDBOX_TOKEN: vars.SANDBOX_TOKEN || undefined,
+    SANDBOX_ACCESS_CLIENT_ID: vars.SANDBOX_ACCESS_CLIENT_ID || undefined,
+    SANDBOX_ACCESS_CLIENT_SECRET: vars.SANDBOX_ACCESS_CLIENT_SECRET || undefined,
     SIGNUP: vars.SIGNUP || undefined,
   };
   signUpMode(env);

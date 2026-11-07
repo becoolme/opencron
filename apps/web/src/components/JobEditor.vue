@@ -253,7 +253,7 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="errors.script" id="e-script" class="err-note" role="alert">{{ errors.script }}</p>
           <p v-if="!runtimes.includes(form.runtime)" class="alert" style="margin: 0">
-            {{ t("This deployment can't run {runtime}. Switch to JavaScript or run OpenCron with Docker.", { runtime: RUNTIME_LABEL[form.runtime] }) }}
+            {{ t("This deployment can't run {runtime}. Switch to JavaScript, or give the deployment a script sandbox.", { runtime: RUNTIME_LABEL[form.runtime] }) }}
           </p>
         </section>
 

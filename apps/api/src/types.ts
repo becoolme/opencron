@@ -14,10 +14,16 @@ export interface Env {
   APP_URL?: string;
   /** Cloudflare only: runs JavaScript script jobs as Dynamic Workers. */
   LOADER?: WorkerLoader;
-  /** Docker only: base URL of the sandbox service that runs script jobs in containers (apps/sandbox). */
+  /**
+   * Base URL of the sandbox service that runs Python and Go script jobs in containers (apps/sandbox). With Docker it is
+   * the bundled service; on Cloudflare, an optional sandbox on a server of your own, reached over HTTPS.
+   */
   SANDBOX_URL?: string;
-  /** Docker only: shared secret the sandbox service requires on every request. */
+  /** Shared secret the sandbox service requires on every request. */
   SANDBOX_TOKEN?: string;
+  /** Optional Cloudflare Access service token, sent when the sandbox sits behind Access. */
+  SANDBOX_ACCESS_CLIENT_ID?: string;
+  SANDBOX_ACCESS_CLIENT_SECRET?: string;
   /** "true" lets HTTP jobs and webhooks reach private or internal addresses. Off by default. */
   ALLOW_PRIVATE_TARGETS?: string;
   /** "open" (default) or "closed": closed allows only the first account. */
