@@ -4,7 +4,6 @@ import { authClient } from "../auth-client";
 import { t } from "../i18n";
 import LangSwitch from "./LangSwitch.vue";
 import HeaderArt from "./HeaderArt.vue";
-import Icon from "./Icon.vue";
 
 const emit = defineEmits<{ authenticated: [] }>();
 
@@ -73,7 +72,7 @@ async function submit(): Promise<void> {
 <template>
   <main class="auth">
     <div class="auth-top">
-      <span class="logo"><span class="mark"><Icon name="clock" :size="18" /></span>OpenCron</span>
+      <span class="logo"><span class="mark" aria-hidden="true">*/</span>OpenCron</span>
       <LangSwitch />
     </div>
 
@@ -124,7 +123,7 @@ async function submit(): Promise<void> {
 .auth { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px 16px 48px; background: var(--surface); }
 .auth-top { width: 100%; max-width: 1100px; display: flex; justify-content: space-between; align-items: center; margin-bottom: clamp(24px, 8vh, 80px); }
 .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; }
-.mark { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; color: #fff; }
+.mark { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; color: #fff; font: 600 15px var(--mono-font); letter-spacing: -0.02em; }
 .panel { width: 100%; max-width: 420px; padding: 32px; }
 .panel-art { width: 100%; height: auto; max-width: 260px; margin: -6px 0 12px; }
 .panel h1 { margin: 0 0 8px; font-size: 34px; font-weight: 400; }

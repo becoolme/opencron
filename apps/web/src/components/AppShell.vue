@@ -31,7 +31,7 @@ function closeMenu(): void {
     <aside class="side" :class="{ open: menuOpen }" @keydown.esc="closeMenu">
       <div class="side-head">
         <a :href="href.jobs" class="logo" @click="menuOpen = false">
-          <span class="mark"><Icon name="clock" :size="18" /></span>
+          <span class="mark" aria-hidden="true">*/</span>
           <span>OpenCron</span>
         </a>
         <button
@@ -98,7 +98,7 @@ function closeMenu(): void {
 .side { flex: 0 0 240px; border-right: 1px solid var(--line); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; background: #fff; }
 .side-head { display: flex; align-items: center; justify-content: space-between; }
 .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; padding: 2px 8px 14px; }
-.mark { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; color: #fff; }
+.mark { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; color: #fff; font: 600 15px var(--mono-font); letter-spacing: -0.02em; }
 .menu-btn { display: none; padding: 0; width: 36px; }
 .side-nav { display: grid; gap: 2px; }
 .side-foot { margin-top: auto; border-top: 1px solid var(--line); padding: 12px 4px 0 8px; display: flex; align-items: center; gap: 8px; }
