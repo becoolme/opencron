@@ -38,7 +38,7 @@ the Postgres option.
 | Path | What it is |
 | --- | --- |
 | `apps/api` | The Worker: Hono API, Better Auth, scheduler, job runners, notifiers, migrations |
-| `apps/web` | The Vue web app, built by Vite and served as the Worker's static assets |
+| `apps/web` | The static site built by Astro: the landing page at `/` and the Vue app at `/app`, served as the Worker's static assets |
 | `apps/sandbox` | The Docker script sandbox: runs Node.js, Python and Go jobs in one container per run |
 | `packages/kit`, `packages/mcp-rest` | Shared with [OpenUptime](https://github.com/becoolme/openuptime), copied in by `pnpm sync:openuptime`; do not edit here |
 

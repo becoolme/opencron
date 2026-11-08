@@ -4,18 +4,18 @@
 
 ## 技术栈
 
-当前项目使用 **Hono + Vite + Vue**，没有引入 Astro：
+当前项目使用 **Hono + Astro + Vue**：
 
 - Hono 负责 Cloudflare Worker 内的 `/api/*` 接口和 Better Auth 路由。
 - Better Auth 提供邮箱密码注册、登录、退出和 Cookie Session。
-- Vue 3 单文件组件负责管理后台 SPA。
-- Vite 与 Cloudflare Vite 插件负责前后端开发、构建和 Worker 运行时集成。
+- Astro 把 `apps/web` 构建成纯静态页面：`/` 是产品介绍页，`/app` 是管理后台，两者在 `/zh-Hans`、`/ja`、`/ko` 下各有一份对应语言的页面。
+- 管理后台由 Vue 3 单文件组件组成，挂载在 `/app` 页面上，在浏览器里处理 `/app/*` 下的路由。
 - Tailwind CSS 4 与 CodeMirror 6 作为本地依赖参与构建。
-- Cloudflare Worker Assets 提供构建后的 HTML、CSS 和 JavaScript。
+- Cloudflare Worker Assets（或 Docker 镜像里的 Node 服务）提供构建后的 HTML、CSS 和 JavaScript；`/app/*` 深链接由 Worker 返回对应语言的 `/app` 页面。
 - D1 存储用户、会话、任务、执行记录和脚本任务的隔离存储。
 - Cloudflare Dynamic Workers 执行用户脚本任务。
 
-Astro 更适合官网、文档、SEO 或以静态内容为主的页面。当前管理端是高交互 SPA，增加 Astro 不会带来明显收益。
+介绍页的分享图在 `apps/web/public/og/` 下，已提交到仓库。修改介绍页首屏文案后运行 `pnpm --filter @opencron/web og` 重新生成（需要 macOS 系统字体）。
 
 ## 安装与初始化
 
@@ -50,14 +50,14 @@ BETTER_AUTH_SECRET=至少-32-字符的本地随机字符串
 pnpm dev
 ```
 
-默认地址是 <http://localhost:5173/>。Vite 同时启动 Vue HMR 和本地 workerd：
+默认地址是 <http://localhost:5173/>，管理后台在 <http://localhost:5173/app>。`pnpm dev` 同时启动两个进程：
 
-- 页面和静态资源由 Vite / Worker Assets 提供。
-- `/api/auth/*` 由 Better Auth 处理，其余 `/api/*` 需要有效 Session。
-- D1、Dynamic Worker Loader 和其他绑定使用本地模拟环境。
-- Worker 调试入口是 <http://localhost:5173/__debug>。
+- `astro dev`（端口 5173）提供页面和 Vue HMR，并把 `/api/*` 代理到 Worker。
+- `wrangler dev`（端口 8787）运行 Worker；`/api/auth/*` 由 Better Auth 处理，其余 `/api/*` 需要有效 Session。
+- D1、Dynamic Worker Loader 和其他绑定使用本地模拟环境，状态保存在 `apps/api/.wrangler/`。
+- 在 wrangler 终端按 `d` 打开 Worker DevTools 调试。
 
-如果安装或升级依赖后页面一直空白，而 `pnpm typecheck` 没有错误，先完全停止旧的 Vite 进程再重新运行 `pnpm dev`。Vite 的旧依赖优化状态不会总能通过 HMR 自愈。
+如果安装或升级依赖后页面一直空白，而 `pnpm typecheck` 没有错误，先完全停止旧的 dev 进程再重新运行 `pnpm dev`。
 
 ## 登录注册与 API 调试
 
@@ -102,7 +102,7 @@ curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=*+*+*+*+*&format=json
 1. 注册或登录后新建 `script` 类型任务。
 2. 保留默认 module Worker 脚本，保存后点击 **Run**。
 3. 展开任务历史，确认状态为 `200`，响应包含任务名。
-4. 需要断点时打开 `/__debug`，在 `apps/api/src/script-runner.ts` 检查 Loader、RPC storage binding 和响应。
+4. 需要断点时在 wrangler 终端按 `d` 打开 DevTools，在 `apps/api/src/script-runner.ts` 检查 Loader、RPC storage binding 和响应。
 
 Dynamic Worker 默认没有外网访问，不会获得 `BETTER_AUTH_SECRET`、原始 D1、原始 KV 或 Worker Loader。父 Worker 只提供绑定到“当前用户 + 当前任务”的 RPC 能力。
 
@@ -173,4 +173,4 @@ pnpm deploy
 
 本地开发使用独立的模拟 KV，不需要生产 ID。不要把本地 `.dev.vars` 的值用于生产；`apps/api/wrangler.toml` 已将 `BETTER_AUTH_SECRET` 声明为必需 Secret。
 
-部署域名通过 `APP_URL` 和 `[[routes]]` 配置（见 [部署](./deploy.md)）。`assets.run_worker_first = ["/api/*"]` 保证 API 先进入 Hono，其余导航请求按 SPA 规则返回 `index.html`。
+部署域名通过 `APP_URL` 和 `[[routes]]` 配置（见 [部署](./deploy.md)）。`assets.run_worker_first` 让 `/api/*` 和 `/app/*` 深链接先进入 Worker：API 交给 Hono，深链接返回对应语言的 `/app` 页面；其余地址直接由静态文件回答，找不到时返回 `404.html`。

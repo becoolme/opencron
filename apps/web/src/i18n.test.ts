@@ -3,7 +3,7 @@ import { localePath, splitPath } from "./i18n";
 import { ja } from "./locales/ja";
 import { ko } from "./locales/ko";
 import { zh } from "./locales/zh";
-import { parse } from "./routes";
+import { inApp, parse } from "./routes";
 
 describe("language paths", () => {
   it.each([
@@ -27,12 +27,21 @@ describe("language paths", () => {
   });
 
   it("routes the path after the prefix", () => {
-    expect(parse(splitPath("/ko/jobs/7/edit").rest)).toEqual({ name: "edit", id: 7 });
+    expect(parse(splitPath("/ko/app/jobs/7/edit").rest)).toEqual({ name: "edit", id: 7 });
+    expect(parse(splitPath("/zh-Hans/app").rest)).toEqual({ name: "jobs" });
+    expect(parse("/app/runs")).toEqual({ name: "runs" });
     expect(parse("/jobs/new")).toEqual({ name: "new" });
     expect(parse("/runs/")).toEqual({ name: "runs" });
     expect(parse("/secrets")).toEqual({ name: "secrets" });
     expect(parse("/keys")).toEqual({ name: "keys" });
     expect(parse("/nowhere")).toEqual({ name: "jobs" });
+  });
+
+  it("knows which paths belong to the app", () => {
+    expect(inApp("/app")).toBe(true);
+    expect(inApp("/app/jobs/4")).toBe(true);
+    expect(inApp("/")).toBe(false);
+    expect(inApp("/apples")).toBe(false);
   });
 });
 

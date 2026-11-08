@@ -7,9 +7,18 @@ export type Route =
   | { name: "job"; id: number }
   | { name: "edit"; id: number };
 
-/** Reads an app path with the language prefix already removed. */
+/** Where the app lives; the site's own pages (the landing page) sit outside it. */
+export const APP_BASE = "/app";
+
+/** Whether a path, with the language prefix already removed, belongs to the app. */
+export function inApp(path: string): boolean {
+  return path === APP_BASE || path.startsWith(`${APP_BASE}/`);
+}
+
+/** Reads an app path with the language prefix already removed: `/app/jobs/4` is job 4. */
 export function parse(path: string): Route {
-  const clean = path.replace(/\/+$/, "") || "/";
+  const inside = inApp(path) ? path.slice(APP_BASE.length) : path;
+  const clean = inside.replace(/\/+$/, "") || "/";
   if (clean === "/runs") return { name: "runs" };
   if (clean === "/secrets") return { name: "secrets" };
   if (clean === "/keys") return { name: "keys" };

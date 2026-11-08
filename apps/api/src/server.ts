@@ -10,6 +10,7 @@ import { applyOutboundPolicy } from "./outbound";
 import { handleScheduled } from "./scheduler";
 import { headersFor, parseHeaders } from "./static-headers";
 import type { AppHonoEnv } from "./types";
+import { pageFile } from "./web-routes";
 
 /**
  * Self-hosted entry point (Docker): one Node process serving the API, the web build and the scheduler, against
@@ -26,7 +27,7 @@ root.get("/health", (c) => c.text("ok"));
 root.route("/", app);
 
 // The web build, with the headers Cloudflare would apply from its _headers file.
-const webDist = resolve(process.env.WEB_DIST ?? join(import.meta.dirname, "../../web/dist/client"));
+const webDist = resolve(process.env.WEB_DIST ?? join(import.meta.dirname, "../../web/dist"));
 if (existsSync(join(webDist, "index.html"))) {
   const headersFile = join(webDist, "_headers");
   const rules = existsSync(headersFile) ? parseHeaders(readFileSync(headersFile, "utf8")) : [];
@@ -35,8 +36,14 @@ if (existsSync(join(webDist, "index.html"))) {
     for (const [name, value] of headersFor(rules, c.req.path)) c.res.headers.set(name, value);
   });
   root.use("*", serveStatic({ root: webDist }));
-  const indexHtml = readFileSync(join(webDist, "index.html"), "utf8");
-  root.get("*", (c) => c.req.path.startsWith("/api/") ? c.json({ error: "not found" }, 404) : c.html(indexHtml));
+  // Pages are `<path>.html` files, as Cloudflare serves them; app deep links get the app page, anything else 404.html.
+  const notFound = existsSync(join(webDist, "404.html")) ? readFileSync(join(webDist, "404.html"), "utf8") : "Not found";
+  root.get("*", (c) => {
+    if (c.req.path.startsWith("/api/")) return c.json({ error: "not found" }, 404);
+    const file = pageFile(c.req.path);
+    if (file && existsSync(join(webDist, file))) return c.html(readFileSync(join(webDist, file), "utf8"));
+    return c.html(notFound, 404);
+  });
 } else {
   console.warn(`No web build at ${webDist}: serving the API only`);
 }

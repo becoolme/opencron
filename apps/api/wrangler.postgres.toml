@@ -20,9 +20,14 @@ required = ["BETTER_AUTH_SECRET", "DATABASE_URL"]
 [triggers]
 crons = ["* * * * *"]
 
+# The static web build (pnpm --filter @opencron/web build). Pages are `<path>.html` files; deep links into the app
+# (`/app/...`, `/<lang>/app/...`) go to the Worker, which answers them with the app page (src/web-routes.ts).
 [assets]
-not_found_handling = "single-page-application"
-run_worker_first = ["/api/*"]
+directory = "../web/dist"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+run_worker_first = ["/api/*", "/app/*", "/zh-Hans/app/*", "/ja/app/*", "/ko/app/*"]
 
 # Local development uses a simulated namespace. Before production deployment,
 # create a namespace and add its `id` here (see docs/development.md).

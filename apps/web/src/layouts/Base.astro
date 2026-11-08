@@ -1,0 +1,59 @@
+---
+import { localePath, type Locale } from "../i18n";
+import { HTML_LANG, OG_LOCALE, SITE_LOCALES } from "../site";
+
+interface Props {
+  locale: Locale;
+  title: string;
+  description?: string;
+  /** The page's path without the language prefix, e.g. `/` or `/app`; used for canonical and hreflang links. */
+  path: string;
+  /** Share image, a site path such as `/og/en.png`. */
+  image?: string;
+  noindex?: boolean;
+}
+
+const { locale, title, description, path, image, noindex = false } = Astro.props;
+const site = Astro.site ?? new URL("http://localhost:5173");
+const abs = (p: string) => new URL(p, site).href;
+const canonical = abs(localePath(locale, path));
+---
+
+<!doctype html>
+<html lang={HTML_LANG[locale]}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {noindex ? (
+      <meta name="robots" content="noindex" />
+    ) : (
+      <>
+        <link rel="canonical" href={canonical} />
+        {SITE_LOCALES.map((l) => <link rel="alternate" hreflang={HTML_LANG[l]} href={abs(localePath(l, path))} />)}
+        <link rel="alternate" hreflang="x-default" href={abs(localePath("en", path))} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="OpenCron" />
+        <meta property="og:title" content={title} />
+        {description && <meta property="og:description" content={description} />}
+        <meta property="og:url" content={canonical} />
+        <meta property="og:locale" content={OG_LOCALE[locale]} />
+        {image && <meta property="og:image" content={abs(image)} />}
+        {image && <meta property="og:image:width" content="1200" />}
+        {image && <meta property="og:image:height" content="630" />}
+        {image && <meta property="og:image:alt" content={title} />}
+        <meta name="twitter:card" content={image ? "summary_large_image" : "summary"} />
+        <meta name="twitter:title" content={title} />
+        {description && <meta name="twitter:description" content={description} />}
+        {image && <meta name="twitter:image" content={abs(image)} />}
+      </>
+    )}
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

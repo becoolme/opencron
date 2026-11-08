@@ -1,0 +1,454 @@
+---
+import "@fontsource/geist-sans/400.css";
+import "@fontsource/geist-sans/500.css";
+import "@fontsource/geist-sans/600.css";
+import "@fontsource/geist-mono/400.css";
+import "@fontsource/geist-mono/500.css";
+import "@fontsource/instrument-serif/400.css";
+import "./landing.css";
+import { LOCALES, localePath, type Locale } from "../i18n";
+import Base from "../layouts/Base.astro";
+import { appPath, docs, REPO, SITE_LOCALES } from "../site";
+import { LANDING } from "./copy";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = LANDING[locale];
+const app = appPath(locale);
+const ogName = locale === "zh-CN" ? "zh-Hans" : locale;
+const inMin = (n: number) => c.dash.inMin.replace("{n}", String(n));
+const mcpCommand = `claude mcp add --transport http opencron \\\n  https://opencron.example.com/api/mcp \\\n  --header "Authorization: Bearer oc_…"`;
+
+// The dashboard mock: o = passed, f = failed, l = slow.
+const rows = [
+  { kind: "JS", script: true, name: "sync-orders", target: "sync.js", cron: "*/5 * * * *", human: c.dash.every5, next: inMin(2), bars: "ooooooooooooooofooooo", status: "ok", took: "38ms" },
+  { kind: "POST", script: false, name: "send-digest", target: "api.example.com/digest", cron: "0 10 * * 1-5", human: c.dash.weekdays10, next: c.dash.runningNow, bars: "ooooooooooooooooooooo", status: "run", took: "—" },
+  { kind: "GO", script: true, name: "nightly-report", target: "report.go", cron: "0 3 * * *", human: c.dash.daily3, next: "03:00", bars: "oooooooooooooooooofff", status: "fail", took: "30.0s" },
+  { kind: "PY", script: true, name: "refresh-rates", target: "rates.py", cron: "0 * * * *", human: c.dash.hourly, next: inMin(54), bars: "ooooooooooooooooooooo", status: "ok", took: "640ms" },
+  { kind: "GET", script: false, name: "warm-cache", target: "example.com/api/warm", cron: "*/15 * * * *", human: c.dash.every15, next: inMin(9), bars: "ooooooooooooolooooooo", status: "ok", took: "212ms" },
+  { kind: "JS", script: true, name: "cleanup-sessions", target: "cleanup.js", cron: "30 4 * * 0", human: c.dash.sunday430, next: "04:30", bars: "ooooooooooooooooooooo", status: "ok", took: "41ms" },
+];
+const statusText = { ok: c.dash.passed, fail: c.dash.failed, run: c.dash.running } as Record<string, string>;
+const channels = ["Slack", "Discord", "Telegram", locale === "zh-CN" ? "飞书" : "Lark", locale === "zh-CN" ? "钉钉" : "DingTalk", "Webhook"];
+const arrow = "M5 12h14M13 6l6 6-6 6";
+// Two-color headings: Latin text needs a space before the accent part, Chinese and Japanese text does not.
+const join = (a: string) => (/[\u2e80-\u9fff\uff00-\uffef]$/.test(a) ? a : `${a} `);
+---
+
+<Base locale={locale} title={c.meta.title} description={c.meta.description} path="/" image={`/og/${ogName}.png`}>
+  <div class="oc">
+    <header class="top">
+      <div class="wrap top-in">
+        <a href={localePath(locale, "/")} class="brand"><img src="/favicon.svg" alt="" width="30" height="30" />OpenCron</a>
+        <nav class="fl top-nav" aria-label={c.nav.menu}>
+          <a href="#features">{c.nav.features}</a><a href="#agent">{c.nav.mcp}</a><a href={docs("deploy.md")}>{c.nav.docs}</a><a href={REPO}>{c.nav.github}</a>
+        </nav>
+        <div class="top-cta">
+          <a href={app} class="login">{c.nav.login}</a>
+          <a class="btn primary sm" href={app}>{c.nav.start}</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="wrap split">
+        <div class="col">
+          <a href="#agent" class="chip hero-chip"><span class="dot"></span>{c.hero.chip}</a>
+          <h1 class="serif h1">{join(c.hero.titleA)}<span class="accent">{c.hero.titleB}</span></h1>
+          <p class="lead big">{c.hero.lead}</p>
+          <div class="actions">
+            <a class="btn primary" href={`${app}/jobs/new`}>{c.hero.primary}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={arrow} /></svg></a>
+            <a class="btn" href="#agent">{c.hero.secondary}</a>
+          </div>
+          <p class="faint note">{c.hero.note}</p>
+        </div>
+
+        <div class="col wide">
+          <svg class="art" viewBox="0 0 570 500" role="img" aria-label={c.hero.art}>
+            <circle class="l g" cx="300" cy="250" r="140" stroke-dasharray="1 5" />
+            <circle class="l g" cx="300" cy="250" r="78" stroke-dasharray="2 4" />
+            <circle class="l" cx="300" cy="250" r="110" />
+            <path class="l" d="M300 140V152M355 154.7L349 165.1M395.3 195L384.9 201M410 250H398M395.3 305L384.9 299M355 345.3L349 334.9M300 360V348M245 345.3L251 334.9M204.7 305L215.1 299M190 250H202M204.7 195L215.1 201M245 154.7L251 165.1" />
+            <path class="l" d="M300 250V196"><animateTransform attributeName="transform" type="rotate" from="0 300 250" to="360 300 250" dur="60s" repeatCount="indefinite" /></path>
+            <path class="l a" d="M300 250V162"><animateTransform attributeName="transform" type="rotate" from="0 300 250" to="360 300 250" dur="8s" repeatCount="indefinite" /></path>
+            <circle cx="300" cy="250" r="3" fill="#2f5bea" />
+            <text x="300" y="300" text-anchor="middle">*/5 * * * *</text>
+            <circle cx="399" cy="151" r="3" fill="#fff" class="l g" /><circle cx="399" cy="349" r="3" fill="#fff" class="l g" /><circle cx="201" cy="349" r="3" fill="#fff" class="l g" /><circle cx="201" cy="151" r="3" fill="#fff" class="l g" />
+            <circle r="3.5" fill="#2f5bea"><animateMotion dur="12s" repeatCount="indefinite" path="M300 110a140 140 0 1 1-.1 0" /></circle>
+
+            <rect class="l" x="14" y="58" width="168" height="50" rx="12" fill="#fff" />
+            <path class="l a" d="M42 72l2.2 6.3 6.3 2.2-6.3 2.2L42 89l-2.2-6.3-6.3-2.2 6.3-2.2z" />
+            <text class="i" x="60" y="80">{c.hero.agent}</text>
+            <text class="s" x="60" y="96">{c.hero.ask}</text>
+            <path class="l a flow" d="M182 84C222 84 234 122 242 158" />
+            <text x="214" y="108" class="acc">MCP</text>
+            <circle r="2.5" fill="#2f5bea"><animateMotion dur="2.2s" repeatCount="indefinite" path="M182 84C222 84 234 122 242 158" /></circle>
+
+            <path class="l g" d="M410 250C432 250 430 120 452 120" />
+            <path class="l g" d="M410 250H452" />
+            <path class="l g" d="M410 250C432 250 430 380 452 380" />
+            <circle r="2.5" fill="#2f5bea"><animateMotion dur="2s" repeatCount="indefinite" path="M410 250C432 250 430 120 452 120" /></circle>
+            <circle r="2.5" fill="#2f5bea"><animateMotion dur="2s" begin=".7s" repeatCount="indefinite" path="M410 250H452" /></circle>
+            <circle r="2.5" fill="#d93a3a"><animateMotion dur="2s" begin="1.4s" repeatCount="indefinite" path="M410 250C432 250 430 380 452 380" /></circle>
+            <rect class="l" x="452" y="100" width="110" height="40" rx="10" fill="#fff" /><text class="i" x="466" y="124">POST /sync</text><circle cx="548" cy="120" r="3" fill="#0f9d58" />
+            <rect class="l" x="452" y="230" width="110" height="40" rx="10" fill="#fff" /><text class="i" x="466" y="254">main.py</text><circle cx="548" cy="250" r="3" fill="#0f9d58" />
+            <rect class="l r" x="452" y="360" width="110" height="40" rx="10" fill="#fff" /><text class="i" x="466" y="384">report.go</text><circle cx="548" cy="380" r="3" fill="#d93a3a" /><circle class="l r pulse" cx="548" cy="380" r="4" />
+
+            <path class="l r flow slow" d="M507 400C507 476 310 482 250 436" />
+            <circle r="2.5" fill="#d93a3a"><animateMotion dur="3.2s" repeatCount="indefinite" path="M507 400C507 476 310 482 250 436" /></circle>
+            <rect class="l" x="14" y="404" width="236" height="50" rx="12" fill="#fff" />
+            <path class="l r" d="M36 438v-8a7 7 0 0 1 14 0v8l2 2.5H34zM40.5 444h5" />
+            <text class="i" x="62" y="426">{c.hero.alertTitle}</text>
+            <text class="s" x="62" y="442">{c.hero.alertText}</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="dm-sec">
+      <div class="wrap">
+        <div class="dm" role="img" aria-label={c.dash.art}>
+          <div class="dmt"><span class="dots"><i></i><i></i><i></i></span><span class="mono faint dmurl">opencron.example.com/app</span></div>
+          <div class="dmb">
+            <aside class="dma">
+              <div class="dm-brand"><img src="/favicon.svg" alt="" width="22" height="22" />OpenCron</div>
+              <span class="dmn on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" /></svg>{c.dash.jobs}</span>
+              <span class="dmn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13" /></svg>{c.dash.runs}<em>3</em></span>
+              <span class="dmn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>{c.dash.secrets}</span>
+              <span class="dmn"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4" /><path d="M12 12h8v3M17 12v2" /></svg>{c.dash.keys}</span>
+              <div class="dm-mcp"><b>{c.dash.mcpOn}</b><span>{c.dash.mcpNote}</span></div>
+            </aside>
+            <div class="dmm">
+              <div class="dm-head">
+                <div><div class="serif dm-title">{c.dash.heading}</div><div class="faint dm-sub">{c.dash.sub}</div></div>
+                <span class="chip dark">{c.dash.newJob}</span>
+              </div>
+              <div class="dm-alert">
+                <svg class="art" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="4" fill="none" stroke="#d93a3a" class="pulse" /><circle cx="9" cy="9" r="3.5" fill="#d93a3a" /></svg>
+                <span class="grow"><b>{c.dash.banner}</b> <span class="faint">{c.dash.bannerNote}</span></span>
+                <span class="pill run"><i></i>{c.dash.bannerPill}</span>
+              </div>
+              <div class="dmg">
+                <div class="dms"><span class="faint">{c.dash.statJobs}</span><b class="mono">22<small>/ 24</small></b><span class="dms-n">{c.dash.statJobsNote}</span></div>
+                <div class="dms"><span class="faint">{c.dash.statRuns}</span><b class="mono">3,412</b><span class="dms-n ok">{c.dash.statRunsNote}</span></div>
+                <div class="dms"><span class="faint">{c.dash.statOk}</span><b class="mono">99.71<small>%</small></b><span class="dms-n bad">{c.dash.statOkNote}</span></div>
+              </div>
+              <div class="dmtab">
+                <div class="dmr h"><span>{c.dash.colType}</span><span>{c.dash.colJob}</span><span>{c.dash.colSchedule}</span><span>{c.dash.colNext}</span><span>{c.dash.colRecent}</span><span>{c.dash.colStatus}</span><span class="r">{c.dash.colTook}</span></div>
+                {rows.map((row) => (
+                  <div class="dmr">
+                    <span class:list={["chip", "kind", { script: row.script }]}>{row.kind}</span>
+                    <span class="cell"><b>{row.name}</b><span class="mono faint ell">{row.target}</span></span>
+                    <span class="cell"><span class="mono s12">{row.cron}</span><span class="faint s115">{row.human}</span></span>
+                    <span class:list={["mono", "s12", row.status === "run" ? "acc" : "muted"]}>{row.next}</span>
+                    <span class="bars" aria-hidden="true">{[...row.bars].map((b) => <i class={b === "f" ? "f" : b === "l" ? "l" : undefined} />)}</span>
+                    <span><span class:list={["pill", row.status]}><i></i>{statusText[row.status]}</span></span>
+                    <span class="mono faint s12 r">{row.took}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec tint" id="agent">
+      <div class="wrap split gap56">
+        <div class="col">
+          <div class="eyebrow">{c.mcp.eyebrow}</div>
+          <h2 class="serif h2">{c.mcp.title}</h2>
+          <p class="lead">{c.mcp.lead}</p>
+          <ol class="steps">
+            <li><span class="mono step">1</span><span><b>{c.mcp.step1}</b><span class="muted">{c.mcp.step1Note}</span></span></li>
+            <li><span class="mono step">2</span><span class="grow"><b>{c.mcp.step2}</b><pre class="mono cmd">{mcpCommand}</pre></span></li>
+            <li><span class="mono step">3</span><span><b>{c.mcp.step3}</b><span class="muted">{c.mcp.step3Note}</span></span></li>
+          </ol>
+        </div>
+        <div class="col wide stack">
+          <svg class="art" viewBox="0 0 520 90" role="img" aria-label={c.mcp.art}>
+            <rect class="l" x="1" y="22" width="140" height="46" rx="12" fill="#fff" /><text class="i" x="71" y="49" text-anchor="middle">{c.mcp.client}</text>
+            <path class="l a flow" d="M141 45H190" />
+            <rect class="l a" x="190" y="22" width="140" height="46" rx="12" fill="#fff" />
+            <circle class="l a" cx="214" cy="45" r="5" /><path class="l a" d="M219 45h11v4M226 45v3" />
+            <text class="i" x="240" y="49">{c.mcp.key}</text>
+            <path class="l a flow" d="M330 45H379" />
+            <rect class="l" x="379" y="22" width="140" height="46" rx="12" fill="#fff" /><text class="i" x="449" y="49" text-anchor="middle">OpenCron</text>
+            <circle r="2.5" fill="#2f5bea"><animateMotion dur="2.6s" repeatCount="indefinite" path="M141 45H190M330 45H379" /></circle>
+            <circle cx="232" cy="10" r="2" fill="#0f9d58" /><text x="240" y="13" class="s">{c.mcp.keyNote}</text>
+          </svg>
+          <div class="card chat">
+            <div class="me">{c.mcp.question}</div>
+            <div class="bot">
+              <span class="mono faint s12">{c.mcp.called}</span>
+              <span>{c.mcp.answer}</span>
+              <span>{c.mcp.offer}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="why">
+      <div class="wrap">
+        <div class="eyebrow">{c.why.eyebrow}</div>
+        <h2 class="serif h2">{c.why.title}</h2>
+        <div class="grid3">
+          <div class="card pad">
+            <svg class="art pv" viewBox="0 0 280 120" aria-hidden="true">
+              <path class="l g" d="M0 70H280" />
+              <path class="l draw" d="M0 70H40L50 40L62 100L74 70H104L114 46L126 94L138 70H160" />
+              <path class="l r" d="M160 70H280" stroke-dasharray="2 5" />
+              <circle class="l r pulse" cx="230" cy="70" r="5" />
+              <circle cx="230" cy="70" r="2.5" fill="#d93a3a" />
+              <text x="230" y="52" text-anchor="middle" class="bad">{c.why.silentArt}</text>
+            </svg>
+            <h3 class="serif h3">{c.why.silent}</h3><p class="muted">{c.why.silentText}</p>
+          </div>
+          <div class="card pad">
+            <svg class="art pv" viewBox="0 0 280 120" aria-hidden="true">
+              <rect class="l" x="20" y="30" width="62" height="62" rx="7" /><path class="l g" d="M31 46H71M31 58H62M31 70H68M31 82H54" />
+              <rect class="l" x="109" y="30" width="62" height="62" rx="7" /><path class="l g" d="M120 46H152M120 58H160M120 70H146M120 82H158" />
+              <rect class="l" x="198" y="30" width="62" height="62" rx="7" /><path class="l g" d="M209 46H245M209 58H236M209 70H249M209 82H230" />
+              <g><circle class="l a" cx="0" cy="0" r="15" fill="rgba(255,255,255,.6)" /><path class="l a" d="M11 11L20 20" /><animateMotion dur="7s" repeatCount="indefinite" path="M51 58L140 58L229 58L140 58Z" calcMode="spline" keyTimes="0;.33;.66;1" keySplines=".4 0 .2 1;.4 0 .2 1;.4 0 .2 1" /></g>
+              <text x="140" y="114" text-anchor="middle">{c.why.historyArt}</text>
+            </svg>
+            <h3 class="serif h3">{c.why.history}</h3><p class="muted">{c.why.historyText}</p>
+          </div>
+          <div class="card pad">
+            <svg class="art pv" viewBox="0 0 280 120" aria-hidden="true">
+              <circle class="l g" cx="140" cy="62" r="48" stroke-dasharray="2 5"><animateTransform attributeName="transform" type="rotate" from="0 140 62" to="360 140 62" dur="24s" repeatCount="indefinite" /></circle>
+              <rect class="l" x="110" y="36" width="60" height="52" rx="7" fill="#fff" />
+              <path class="l g" d="M120 52H146M120 64H146M120 76H140" />
+              <circle class="blink" cx="158" cy="52" r="2.5" fill="#0f9d58" />
+              <circle class="blink2" cx="158" cy="52" r="2.5" fill="#d93a3a" />
+              <path class="l r blink2" d="M202 22l10 10M212 22l-10 10" />
+              <path class="l g" d="M30 62H86M194 62H250" stroke-dasharray="2 4" />
+              <text x="140" y="116" text-anchor="middle">{c.why.machineArt}</text>
+            </svg>
+            <h3 class="serif h3">{c.why.machine}</h3><p class="muted">{c.why.machineText}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec mint" id="features">
+      <div class="wrap">
+        <div class="eyebrow">{c.features.eyebrow}</div>
+        <h2 class="serif h2">{c.features.title}</h2>
+        <p class="lead">{c.features.lead}</p>
+
+        <div class="card timeline">
+          <div class="tl-head"><b>{c.features.timeline}</b><span class="mono faint s12">nightly-report · 0 3 * * *</span></div>
+          <div class="scroll-x"><div class="min760">
+            <svg class="art" viewBox="0 0 1100 200" role="img" aria-label={c.features.art}>
+              <path d="M40 130H1060" stroke="#e3e4dc" stroke-width="8" stroke-dasharray="1 59" fill="none" />
+              <path class="l g" d="M40 130H1060" />
+              <path class="l r flow slow" d="M110 122Q220 40 330 122" />
+              <path class="l g flow slow" d="M330 122Q440 40 550 122" />
+              <path class="l a flow slow" d="M550 122Q660 40 770 122" />
+              <path class="l k flow slow" d="M770 122Q880 40 990 122" />
+              <text x="220" y="72" text-anchor="middle">{c.features.arcLog}</text>
+              <text x="440" y="72" text-anchor="middle">{c.features.arcNotify}</text>
+              <text x="660" y="72" text-anchor="middle" class="acc">{c.features.arcMcp}</text>
+              <text x="880" y="72" text-anchor="middle" class="ok">{c.features.arcFix}</text>
+              <circle r="3.5" fill="#2f5bea"><animateMotion dur="8s" repeatCount="indefinite" path="M110 122Q220 40 330 122Q440 40 550 122Q660 40 770 122Q880 40 990 122" /></circle>
+              <circle class="l r" cx="110" cy="130" r="9" fill="#fff" /><path class="l r" d="M106 126l8 8M114 126l-8 8" />
+              <circle class="l g" cx="330" cy="130" r="9" fill="#fff" /><path class="l" d="M326 127h8M326 130h8M326 133h5" />
+              <circle class="l a" cx="550" cy="130" r="9" fill="#fff" /><path class="l a" d="M546.5 133v-4a3.5 3.5 0 0 1 7 0v4l1 1.3h-9zM548.8 136.5h2.4" />
+              <circle class="l a" cx="770" cy="130" r="9" fill="#fff" /><path class="l a" d="M770 125l1.3 3.7 3.7 1.3-3.7 1.3L770 135l-1.3-3.7-3.7-1.3 3.7-1.3z" />
+              <circle class="l k" cx="990" cy="130" r="9" fill="#fff" /><path class="l k" d="M985.5 130.5l3 3 6-6.5" />
+              <circle class="l k pulse" cx="990" cy="130" r="9" />
+              <text class="i" x="110" y="164" text-anchor="middle">{c.features.run}</text><text class="s" x="110" y="182" text-anchor="middle">{c.features.runNote}</text>
+              <text class="i" x="330" y="164" text-anchor="middle">{c.features.recorded}</text><text class="s" x="330" y="182" text-anchor="middle">{c.features.recordedNote}</text>
+              <text class="i" x="550" y="164" text-anchor="middle">{c.features.alert}</text><text class="s" x="550" y="182" text-anchor="middle">{c.features.alertNote}</text>
+              <text class="i" x="770" y="164" text-anchor="middle">{c.features.agent}</text><text class="s" x="770" y="182" text-anchor="middle">{c.features.agentNote}</text>
+              <text class="i" x="990" y="164" text-anchor="middle">{c.features.rerun}</text><text class="s" x="990" y="182" text-anchor="middle">{c.features.rerunNote}</text>
+            </svg>
+          </div></div>
+        </div>
+
+        <div class="grid2">
+          <div class="card pad feat">
+            <span class="fi"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg></span>
+            <h3 class="serif h3">{c.features.cron}</h3>
+            <p class="muted">{c.features.cronText}</p>
+            <div class="chips"><span class="chip">*/5 * * * *</span><span class="chip">0 3 * * *</span><span class="chip">*/15 8-20 * * 1-5</span></div>
+          </div>
+          <div class="card pad feat">
+            <span class="fi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13" /></svg></span>
+            <h3 class="serif h3">{c.features.record}</h3>
+            <p class="muted">{c.features.recordText}</p>
+          </div>
+          <div class="card pad feat">
+            <span class="fi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17v-6a5 5 0 0 1 10 0v6l1.5 2h-13zM10.5 21h3" /></svg></span>
+            <h3 class="serif h3">{c.features.alerts}</h3>
+            <p class="muted">{c.features.alertsText}</p>
+            <div class="chips">{channels.map((ch) => <span class="chip">{ch}</span>)}</div>
+          </div>
+          <div class="card pad feat">
+            <span class="fi"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg></span>
+            <h3 class="serif h3">{c.features.secrets}</h3>
+            <p class="muted">{c.features.secretsText}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="scripts">
+      <div class="wrap split gap56">
+        <div class="col">
+          <div class="eyebrow">{c.scripts.eyebrow}</div>
+          <h2 class="serif h2">{c.scripts.title}</h2>
+          <p class="lead">{c.scripts.lead}</p>
+          <svg class="art narrow" viewBox="0 0 460 120" aria-hidden="true">
+            <rect class="l" x="1" y="30" width="96" height="60" rx="10" /><text class="i" x="49" y="58" text-anchor="middle">main.js</text><text class="s" x="49" y="74" text-anchor="middle">{c.scripts.artCode}</text>
+            <path class="l a flow" d="M97 60H170" />
+            <rect class="l a" x="170" y="14" width="120" height="92" rx="14" stroke-dasharray="4 4" />
+            <rect class="l" x="196" y="40" width="68" height="40" rx="8" /><path class="l g" d="M206 54h24M206 66h40" />
+            <text x="230" y="32" text-anchor="middle" class="acc">{c.scripts.artSandbox}</text>
+            <path class="l a flow" d="M290 60H363" />
+            <rect class="l" x="363" y="30" width="96" height="60" rx="10" /><text class="i" x="411" y="58" text-anchor="middle">200 OK</text><text class="s" x="411" y="74" text-anchor="middle">{c.scripts.artDone}</text>
+            <circle r="2.5" fill="#2f5bea"><animateMotion dur="3s" repeatCount="indefinite" path="M97 60H170M290 60H363" /></circle>
+          </svg>
+          <ul class="points">
+            <li><span class="acc">→</span>{c.scripts.point1}</li>
+            <li><span class="acc">→</span>{c.scripts.point2}</li>
+            <li><span class="acc">→</span>{c.scripts.point3}</li>
+            <li><span class="acc">→</span>{c.scripts.point4}</li>
+          </ul>
+        </div>
+        <div class="col wide">
+          <div class="code">
+            <div class="code-head"><span class="mono">main.js</span><span class="mono dim">JavaScript</span></div>
+            <pre class="mono"><span class="cm">// Count the runs of this job in its own KV store</span>
+export default &#123;
+  async fetch(request, env) &#123;
+    const &#123; jobName, scheduledAt &#125; = await request.json();
+    const runs = Number((await env.KV.get("runs")) ?? 0) + 1;
+    await env.KV.put("runs", String(runs));
+    return new Response(`$&#123;jobName&#125;: run $&#123;runs&#125; at $&#123;scheduledAt&#125;`);
+  &#125;,
+&#125;;</pre>
+            <div class="mono code-out"><div class="dim">{c.scripts.runNote}</div><div>nightly-report: run 42 at 2026-11-07T03:00:00.000Z</div><div class="green">← 200 OK</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec tint">
+      <div class="wrap">
+        <div class="eyebrow">{c.compare.eyebrow}</div>
+        <h2 class="serif h2">{c.compare.title}</h2>
+        <div class="card cmp-card">
+          <div class="min680">
+            <div class="cmp th"><span></span><span>{c.compare.colCrontab}</span><span>{c.compare.colCloud}</span><span class="acc">OpenCron</span></div>
+            <div class="cmp"><span>{c.compare.rowMcp}</span><span class="no">{c.compare.no}</span><span class="no">{c.compare.no}</span><span class="yes">{c.compare.yes}</span></div>
+            <div class="cmp"><span>{c.compare.rowAlerts}</span><span class="no">{c.compare.diy}</span><span class="no">{c.compare.separate}</span><span class="yes">{c.compare.builtIn}</span></div>
+            <div class="cmp"><span>{c.compare.rowLogs}</span><span class="no">{c.compare.grep}</span><span class="no">{c.compare.consoles}</span><span class="yes">{c.compare.builtIn}</span></div>
+            <div class="cmp"><span>{c.compare.rowScripts}</span><span class="yes">{c.compare.yes}</span><span class="no">{c.compare.deployFn}</span><span class="yes">{c.compare.yes}</span></div>
+            <div class="cmp"><span>{c.compare.rowServer}</span><span class="no">{c.compare.no}</span><span class="yes">{c.compare.yes}</span><span class="yes">{c.compare.yes}</span></div>
+            <div class="cmp"><span>{c.compare.rowOss}</span><span class="yes">{c.compare.yes}</span><span class="no">{c.compare.no}</span><span class="yes">{c.compare.yes}</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="selfhost">
+      <div class="wrap split gap56">
+        <div class="col">
+          <div class="eyebrow">{c.oss.eyebrow}</div>
+          <h2 class="serif h2">{c.oss.title}</h2>
+          <p class="lead">{c.oss.lead}</p>
+          <svg class="art narrow" viewBox="0 0 460 110" aria-hidden="true">
+            <rect class="l" x="160" y="8" width="140" height="36" rx="9" /><text class="i" x="230" y="31" text-anchor="middle">{c.oss.artCode}</text>
+            <path class="l g flow slow" d="M230 44V58C230 70 90 66 90 78M230 58C230 70 370 66 370 78" />
+            <rect class="l a" x="10" y="78" width="160" height="30" rx="8" /><text x="90" y="97" text-anchor="middle" class="acc">Cloudflare Workers</text>
+            <rect class="l" x="290" y="78" width="160" height="30" rx="8" /><text x="370" y="97" text-anchor="middle">{c.oss.artDocker}</text>
+          </svg>
+          <div class="actions">
+            <a class="btn" href={REPO}>{c.oss.github}</a>
+            <a class="btn" href={docs("deploy.md")}>{c.oss.deployDocs}</a>
+          </div>
+        </div>
+        <div class="col wide">
+          <div class="code">
+            <div class="code-head"><span class="dots dark"><i></i><i></i><i></i></span></div>
+            <pre class="mono wrap-pre"><span class="dim">{c.oss.cmdClone}</span>
+git clone {REPO}
+cd opencron && cp .env.docker.example .env
+<span class="dim">{c.oss.cmdEdit}</span>
+docker compose up -d --build
+
+<span class="dim">{c.oss.cmdOpen}</span></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec cta">
+      <svg class="art cta-art" viewBox="0 0 1200 360" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+        <circle class="l g" cx="600" cy="180" r="150" stroke-dasharray="1 6" />
+        <circle class="l g" cx="600" cy="180" r="230" stroke-dasharray="1 8" />
+        <circle class="l g" cx="600" cy="180" r="320" stroke-dasharray="1 10" />
+        <circle r="3" fill="#fff"><animateMotion dur="18s" repeatCount="indefinite" path="M600 -50a230 230 0 1 1-.1 0" /></circle>
+        <circle r="2.5" fill="#0f9d58"><animateMotion dur="26s" repeatCount="indefinite" path="M600 -140a320 320 0 1 0 .1 0" /></circle>
+      </svg>
+      <div class="wrap">
+        <h2 class="serif cta-title">{join(c.cta.titleA)}<span>{c.cta.titleB}</span></h2>
+        <p class="lead">{c.cta.lead}</p>
+        <div class="actions center">
+          <a class="btn primary" href={app}>{c.cta.primary}</a>
+          <a class="btn ghost" href={docs("deploy.md")}>{c.cta.secondary}</a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div class="wrap foot-top">
+        <div class="foot-row">
+          <div class="cf">
+            <div class="cfd on"><b>*/5</b><span>{c.footer.minute}</span></div>
+            <div class="cfd"><b>*</b><span>{c.footer.hour}</span></div>
+            <div class="cfd"><b>*</b><span>{c.footer.dom}</span></div>
+            <div class="cfd"><b>*</b><span>{c.footer.month}</span></div>
+            <div class="cfd"><b>*</b><span>{c.footer.dow}</span></div>
+          </div>
+          <div class="reads">
+            <div class="mono faint caps">{c.footer.readsAs}</div>
+            <div class="serif reads-t">{join(c.footer.readsA)}<span class="accent">{c.footer.readsB}</span></div>
+          </div>
+        </div>
+        <svg class="art strip" viewBox="0 0 1180 64" role="img" aria-label={c.footer.strip}>
+          <path d="M0 26H1180" stroke="#d9dbd2" stroke-width="10" stroke-dasharray="1 18.667" fill="none" />
+          <path d="M0 26H1180" stroke="#0e1411" stroke-width="18" stroke-dasharray="1 97.333" fill="none" />
+          <path class="l g" d="M0 26H1180" />
+          <path d="M0 26H1180" stroke="#2f5bea" stroke-width="6" stroke-linecap="round" stroke-dasharray=".01 98.333" fill="none" />
+          <g><path class="l a" d="M0 6V46" /><circle cx="0" cy="26" r="9" fill="none" stroke="#2f5bea" stroke-width="1" class="pulse" /><animateTransform attributeName="transform" type="translate" from="0 0" to="1180 0" dur="60s" repeatCount="indefinite" /></g>
+          <text x="0" y="62">:00</text><text x="295" y="62" text-anchor="middle">:15</text><text x="590" y="62" text-anchor="middle">:30</text><text x="885" y="62" text-anchor="middle">:45</text><text x="1180" y="62" text-anchor="end">:00</text>
+          <text class="s" x="1180" y="8" text-anchor="end">{c.footer.stripNote}</text>
+        </svg>
+      </div>
+      <div class="foot-links">
+        <div class="wrap foot-cols">
+          <div class="foot-brand">
+            <div class="brand small"><img src="/favicon.svg" alt="" width="26" height="26" />OpenCron</div>
+            <p class="faint">{c.footer.tagline}</p>
+          </div>
+          <div class="fl col-links"><b>{c.footer.product}</b><a href="#features">{c.footer.features}</a><a href="#agent">{c.footer.mcp}</a><a href="#scripts">{c.footer.scripts}</a><a href="#selfhost">{c.footer.selfHost}</a></div>
+          <div class="fl col-links"><b>{c.footer.developers}</b><a href={docs("deploy.md")}>{c.footer.deploy}</a><a href={docs("api.md")}>{c.footer.api}</a><a href={docs("scripts.md")}>{c.footer.docs}</a><a href={REPO}>{c.footer.github}</a></div>
+          <div class="fl col-links"><b>{c.footer.language}</b>{SITE_LOCALES.map((l) => <a href={localePath(l, "/")} hreflang={l === "zh-CN" ? "zh-Hans" : l} aria-current={l === locale ? "page" : undefined}>{LOCALES[l]}</a>)}</div>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <div class="wrap mono foot-line">
+          <span><span class="green">●</span> © 2026 OpenCron</span>
+          <span># m h dom mon dow &nbsp; <span class="ink">0 9 * * 1</span> &nbsp;echo "{c.footer.goodWeek}"</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+</Base>

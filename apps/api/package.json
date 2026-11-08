@@ -28,9 +28,12 @@
     "test:postgres": "tsx scripts/test-postgres.ts",
     "test:smoke": "tsx scripts/smoke-database.ts",
     "typecheck": "tsc --noEmit",
-    "dev": "wrangler dev",
+    "dev": "mkdir -p ../web/dist && wrangler dev --port 8787 --test-scheduled",
     "build:node": "esbuild src/server.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/server.mjs --external:pg-native --banner:js=\"import{createRequire as __cr}from'node:module';const require=__cr(import.meta.url);\"",
-    "start:node": "node dist/server.mjs"
+    "start:node": "node dist/server.mjs",
+    "dev:postgres": "mkdir -p ../web/dist && wrangler dev -c wrangler.postgres.toml --port 8787 --test-scheduled",
+    "deploy": "pnpm --filter @opencron/web build && wrangler deploy",
+    "deploy:postgres": "pnpm --filter @opencron/web build && wrangler deploy -c wrangler.postgres.toml"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",

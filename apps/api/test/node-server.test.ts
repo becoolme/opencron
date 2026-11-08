@@ -40,7 +40,7 @@ describe("web build headers", () => {
   const names = (path: string) => headersFor(rules, path).map(([name]) => name);
 
   it("puts the security headers on every page", () => {
-    for (const path of ["/", "/zh-Hans/jobs/4", "/index.html"]) {
+    for (const path of ["/", "/zh-Hans/app/jobs/4", "/app", "/index.html"]) {
       expect(names(path)).toEqual(expect.arrayContaining([
         "Content-Security-Policy", "X-Frame-Options", "X-Content-Type-Options", "Referrer-Policy",
       ]));
@@ -49,7 +49,8 @@ describe("web build headers", () => {
   });
 
   it("caches hashed assets and nothing else", () => {
-    expect(names("/assets/index-abc.js")).toContain("Cache-Control");
+    expect(names("/_astro/client.abc.js")).toContain("Cache-Control");
+    expect(names("/app")).not.toContain("Cache-Control");
     expect(names("/")).not.toContain("Cache-Control");
   });
 

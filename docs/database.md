@@ -41,7 +41,7 @@ pnpm --filter @opencron/api exec wrangler secret put DATABASE_URL --config wrang
 pnpm deploy:postgres
 ```
 
-两个部署命令都会先使用对应的 Vite 配置构建，再部署 `dist/opencron/wrangler.json`，包含生成的前端 Assets 配置。
+两个部署命令都会先用 Astro 构建 `apps/web/dist` 静态页面，再用对应的 Wrangler 配置部署 Worker 和这些 Assets。
 
 ### 使用 Hyperdrive
 

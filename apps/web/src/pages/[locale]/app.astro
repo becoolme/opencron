@@ -1,0 +1,9 @@
+---
+import AppPage from "../../layouts/AppPage.astro";
+import { localeParams } from "../../site";
+
+export const getStaticPaths = localeParams;
+const { locale } = Astro.props;
+---
+
+<AppPage locale={locale} />

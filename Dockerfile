@@ -13,7 +13,7 @@ ENV NODE_ENV=production PORT=8080
 WORKDIR /app
 COPY --from=build /src/apps/api/dist/server.mjs apps/api/dist/server.mjs
 COPY --from=build /src/apps/api/migrations/postgres apps/api/migrations/postgres
-COPY --from=build /src/apps/web/dist/client apps/web/dist/client
+COPY --from=build /src/apps/web/dist apps/web/dist
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD wget -qO- http://127.0.0.1:8080/health || exit 1

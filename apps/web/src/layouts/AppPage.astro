@@ -1,0 +1,18 @@
+---
+import type { Locale } from "../i18n";
+import Base from "./Base.astro";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+---
+
+<!-- The Vue app: the page is an empty mount point, and the app renders every /app route in the browser. -->
+<Base locale={locale} title="OpenCron" path="/app" noindex>
+  <div id="app"></div>
+  <script>
+    import "../main.ts";
+  </script>
+</Base>

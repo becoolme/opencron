@@ -3,6 +3,8 @@ import type { WorkerLoader } from "./loader-types";
 export type ScriptRuntime = "javascript" | "python" | "go";
 
 export interface Env {
+  /** Cloudflare only: the static web build (apps/web/dist). */
+  ASSETS?: Fetcher;
   DB?: D1Database;
   DB_PROVIDER?: "d1" | "postgres";
   DATABASE_URL?: string;

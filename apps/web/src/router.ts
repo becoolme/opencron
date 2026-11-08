@@ -1,14 +1,19 @@
 import { ref } from "vue";
 import { lang, localePath, markDocument, splitPath, type Locale } from "./i18n";
 
-import { parse, type Route } from "./routes";
+import { APP_BASE, inApp, parse, type Route } from "./routes";
 
 export type { Route };
 
 // Links from the old hash router (`/#/jobs/4`) land on the same page.
 if (location.hash.startsWith("#/")) {
   const { locale } = splitPath(location.pathname);
-  history.replaceState(null, "", localePath(locale, location.hash.slice(1) || "/") + location.search);
+  history.replaceState(null, "", app(locale, location.hash.slice(1) || "/") + location.search);
+}
+
+/** An app address in a language: `/jobs/4` → `/ja/app/jobs/4`, `/` → `/ja/app`. */
+function app(locale: Locale, path: string): string {
+  return localePath(locale, path === "/" ? APP_BASE : `${APP_BASE}${path}`);
 }
 
 export const route = ref<Route>(parse(splitPath(location.pathname).rest));
@@ -53,18 +58,19 @@ document.addEventListener("click", (event) => {
   const link = (event.target as Element | null)?.closest?.("a[href]");
   if (!(link instanceof HTMLAnchorElement) || (link.target && link.target !== "_self") || link.hasAttribute("download")) return;
   const url = new URL(link.href);
-  if (url.origin !== location.origin || url.pathname.startsWith("/api/") || url.hash) return;
+  // The landing page and the other site pages are static: leaving the app is an ordinary page load.
+  if (url.origin !== location.origin || !inApp(splitPath(url.pathname).rest) || url.hash) return;
   event.preventDefault();
   go(url.pathname + url.search);
 });
 
 /** Addresses in the current language. Read inside templates or computed values to follow language changes. */
 export const href = {
-  get jobs() { return localePath(lang.value, "/"); },
-  get runs() { return localePath(lang.value, "/runs"); },
-  get secrets() { return localePath(lang.value, "/secrets"); },
-  get keys() { return localePath(lang.value, "/keys"); },
-  get newJob() { return localePath(lang.value, "/jobs/new"); },
-  job: (id: number) => localePath(lang.value, `/jobs/${id}`),
-  edit: (id: number) => localePath(lang.value, `/jobs/${id}/edit`),
+  get jobs() { return app(lang.value, "/"); },
+  get runs() { return app(lang.value, "/runs"); },
+  get secrets() { return app(lang.value, "/secrets"); },
+  get keys() { return app(lang.value, "/keys"); },
+  get newJob() { return app(lang.value, "/jobs/new"); },
+  job: (id: number) => app(lang.value, `/jobs/${id}`),
+  edit: (id: number) => app(lang.value, `/jobs/${id}/edit`),
 };

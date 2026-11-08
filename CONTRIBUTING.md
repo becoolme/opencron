@@ -8,7 +8,7 @@ Thanks for helping. Bug reports, fixes and docs are all welcome.
 pnpm install
 cp apps/api/.dev.vars.example apps/api/.dev.vars   # set BETTER_AUTH_SECRET
 pnpm db:init:local                                 # then db:migrate:local:0002 … 0006
-pnpm dev                                           # http://localhost:5173
+pnpm dev                                           # http://localhost:5173 (app at /app)
 ```
 
 You need Node 22+ and pnpm. See [docs/development.md](docs/development.md).
