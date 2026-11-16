@@ -128,7 +128,7 @@ Set these in `.env`:
 | `POSTGRES_PASSWORD` | (required) | Password of the bundled database. |
 | `BETTER_AUTH_SECRET` | (required) | Signs sessions; at least 16 random characters. |
 | `SANDBOX_TOKEN` | (required) | Shared secret between the app and the sandbox; at least 16 random characters. |
-| `APP_URL` | `http://localhost:8080` | The address users open. |
+| `APP_URL` | `http://localhost:8080` | The address users open. It is also built into the pages' links, `robots.txt` and the sitemap, so run `docker compose up -d --build` after changing it. |
 | `OPENCRON_PORT` | `8080` | Host port for the app. |
 | `ALLOW_PRIVATE_TARGETS` | `false` | `true` lets HTTP jobs and alert webhooks call private addresses, including other containers. |
 | `SIGNUP` | `closed` | `closed` lets only the first account sign up; `open` lets anyone who can reach the app. |

@@ -49,6 +49,23 @@ watch(
   { immediate: true },
 );
 
+// The 30-second refresh (and a scheduled run) moves last_run_at; the newest runs are then fetched and put on top,
+// keeping the older pages already loaded.
+watch(
+  () => job.value?.last_run_at,
+  async (now, before) => {
+    if (!runsLoaded.value || now == null || now === before) return;
+    try {
+      const rows = await fetchExecutions(`/jobs/${props.id}/executions`, PAGE);
+      const known = new Set(runs.value.map((run) => run.id));
+      const fresh = rows.filter((run) => !known.has(run.id));
+      if (fresh.length) runs.value = [...fresh, ...runs.value];
+    } catch {
+      // the next refresh tries again
+    }
+  },
+);
+
 async function loadMore(): Promise<void> {
   const last = runs.value[runs.value.length - 1];
   if (!last) return;

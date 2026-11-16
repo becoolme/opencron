@@ -9,6 +9,7 @@ import JobsList from "./components/JobsList.vue";
 import RunsPage from "./components/RunsPage.vue";
 import SecretsPage from "./components/SecretsPage.vue";
 import KeysPage from "./components/KeysPage.vue";
+import { UNAUTHORIZED_EVENT } from "./api";
 import { t } from "./i18n";
 import { href, route } from "./router";
 import { jobsById, loadError, loadMeta, loaded, refresh, reset } from "./store";
@@ -34,13 +35,19 @@ function tick(): void {
 function onVisible(): void {
   if (document.visibilityState === "visible") tick();
 }
+// A 401 means the session is gone (expired, or signed out in another tab): reload it, which shows the sign-in screen.
+function onUnauthorized(): void {
+  if (session.value) void sessionState.value.refetch();
+}
 onMounted(() => {
   timer = setInterval(tick, 30_000);
   document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
 });
 onBeforeUnmount(() => {
   clearInterval(timer);
   document.removeEventListener("visibilitychange", onVisible);
+  window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
 });
 
 const toast = ref<{ text: string; kind: "ok" | "fail" | "info"; id: number } | null>(null);
@@ -61,6 +68,7 @@ const crumbs = computed(() => {
     case "new": return [jobs, { label: t("New job") }];
     case "job": return [jobs, { label: jobsById.value.get(r.id)?.name ?? `#${r.id}` }];
     case "edit": return [jobs, { label: jobsById.value.get(r.id)?.name ?? `#${r.id}`, href: href.job(r.id) }, { label: t("Edit") }];
+    case "missing": return [jobs, { label: t("Page not found") }];
     default: return [{ label: t("Cron jobs") }];
   }
 });
@@ -99,6 +107,11 @@ async function signOut(): Promise<void> {
       <JobEditor v-else-if="route.name === 'new'" key="new" @toast="showToast" />
       <JobEditor v-else-if="route.name === 'edit'" :key="`edit-${route.id}`" :id="route.id" @toast="showToast" />
       <JobDetail v-else-if="route.name === 'job'" :id="route.id" @toast="showToast" />
+      <section v-else class="missing">
+        <h1>{{ t("Page not found") }}</h1>
+        <p class="muted">{{ t("There is nothing at this address.") }}</p>
+        <a class="btn" :href="href.jobs">{{ t("Back to your jobs") }}</a>
+      </section>
     </template>
   </AppShell>
 
@@ -111,6 +124,9 @@ async function signOut(): Promise<void> {
 </template>
 
 <style scoped>
+.missing { padding: 48px 0; display: grid; gap: 12px; justify-items: start; }
+.missing h1 { font-size: 20px; margin: 0; }
+.missing p { margin: 0; }
 .boot { min-height: 100vh; display: grid; place-items: center; font-size: 14px; }
 .toast-host { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; width: max-content; max-width: calc(100vw - 32px); }
 .toast { display: flex; align-items: center; gap: 12px; padding: 11px 12px 11px 16px; border-radius: 12px; background: var(--ink); color: #fff; font-size: 14px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18); animation: rise 0.18s ease-out; }

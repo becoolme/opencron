@@ -6,6 +6,9 @@ WORKDIR /src
 RUN corepack enable
 COPY . .
 RUN pnpm install --frozen-lockfile
+# the public address goes into the pages' canonical, hreflang and Open Graph links, robots.txt and the sitemap
+ARG APP_URL=http://localhost:8080
+ENV APP_URL=$APP_URL
 RUN pnpm --filter @opencron/web build && pnpm --filter @opencron/api build:node
 
 FROM node:22-alpine

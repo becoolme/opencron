@@ -18,16 +18,28 @@ function app(locale: Locale, path: string): string {
 
 export const route = ref<Route>(parse(splitPath(location.pathname).rest));
 
+/** The address the app shows, so a cancelled Back can put it back. */
+let shown = location.pathname + location.search;
+
 function sync(): void {
   const { locale, rest } = splitPath(location.pathname);
   lang.value = locale;
   markDocument();
   route.value = parse(rest);
+  shown = location.pathname + location.search;
 }
 
-window.addEventListener("popstate", sync);
-
 let leaveGuard: (() => boolean) | null = null;
+
+// The browser has already changed the address when Back or Forward fires: a page that keeps its unsaved work
+// restores the address it showed instead of rendering the one it is leaving for.
+window.addEventListener("popstate", () => {
+  if (leaveGuard && !leaveGuard()) {
+    history.pushState(null, "", shown);
+    return;
+  }
+  sync();
+});
 
 /** Lets a page with unsaved work confirm before an in-app navigation; returns the remover. */
 export function guardLeave(guard: () => boolean): () => void {

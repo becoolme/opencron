@@ -34,7 +34,8 @@ describe("language paths", () => {
     expect(parse("/runs/")).toEqual({ name: "runs" });
     expect(parse("/secrets")).toEqual({ name: "secrets" });
     expect(parse("/keys")).toEqual({ name: "keys" });
-    expect(parse("/nowhere")).toEqual({ name: "jobs" });
+    expect(parse("/nowhere")).toEqual({ name: "missing" });
+    expect(parse("/app/jobs/7/nowhere")).toEqual({ name: "missing" });
   });
 
   it("knows which paths belong to the app", () => {

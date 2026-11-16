@@ -99,11 +99,11 @@ function remove(index: number): void {
 
       <template v-if="draft.type === 'telegram'">
         <label class="fld">
-          <span>Bot token</span>
+          <span>{{ t("Bot token") }}</span>
           <input ref="firstField" v-model="draft.bot_token" class="in mono" autocomplete="off" spellcheck="false" placeholder="123456:ABC…" />
         </label>
         <label class="fld">
-          <span>Chat ID</span>
+          <span>{{ t("Chat ID") }}</span>
           <input v-model="draft.chat_id" class="in mono" autocomplete="off" spellcheck="false" placeholder="-1001234567890" />
         </label>
       </template>

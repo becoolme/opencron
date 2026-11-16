@@ -5,7 +5,8 @@ export type Route =
   | { name: "keys" }
   | { name: "new" }
   | { name: "job"; id: number }
-  | { name: "edit"; id: number };
+  | { name: "edit"; id: number }
+  | { name: "missing" };
 
 /** Where the app lives; the site's own pages (the landing page) sit outside it. */
 export const APP_BASE = "/app";
@@ -27,5 +28,5 @@ export function parse(path: string): Route {
   if (edit) return { name: "edit", id: Number(edit[1]) };
   const job = clean.match(/^\/jobs\/(\d+)$/);
   if (job) return { name: "job", id: Number(job[1]) };
-  return { name: "jobs" };
+  return clean === "/" ? { name: "jobs" } : { name: "missing" };
 }

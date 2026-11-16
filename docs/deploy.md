@@ -13,7 +13,8 @@ binding (for script jobs). The commands run from the repository root.
    ```
 
 2. Set `APP_URL` in `apps/api/wrangler.toml` to the URL you will serve on, and uncomment `[[routes]]` with your domain
-   (or leave it commented to use the `workers.dev` address).
+   (or leave it commented to use the `workers.dev` address). The web build reads it too, for canonical links,
+   `robots.txt` and the sitemap; an `APP_URL` in the build environment takes precedence.
 
 3. Apply the migrations and set the auth secret:
 
@@ -95,7 +96,7 @@ Things to know:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `APP_URL` | `http://localhost:5173` | Public URL of the deployment. Sign-in is accepted from its host and from localhost. |
+| `APP_URL` | `http://localhost:5173` | Public URL of the deployment. Sign-in is accepted from its host and from localhost. The web build uses it for canonical links, `robots.txt` and the sitemap. |
 | `ALLOW_PRIVATE_TARGETS` | `false` | `true` lets HTTP jobs and alert webhooks call private or internal addresses. |
 | `SIGNUP` | `open` | `closed` lets only the first account sign up; later sign-ups are refused. The Docker setup defaults to `closed`. |
 | `SANDBOX_URL` | (none) | Optional. HTTPS address of a script sandbox for Python and Go jobs; see [above](#python-and-go-on-cloudflare). |
