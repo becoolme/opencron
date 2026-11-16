@@ -23,14 +23,27 @@ export class RunQueue {
     this.running.set(owner, this.#count(this.running, owner) + 1);
   }
 
-  /** Resolves when the run may start; rejects with status 429 when the line is full for everyone or for this owner. */
-  acquire(owner = "") {
+  /**
+   * Resolves when the run may start; rejects with status 429 when the line is full for everyone or for this owner.
+   * Aborting `signal` while the run waits (the caller went away) takes it out of line, so it never starts.
+   */
+  acquire(owner = "", signal) {
+    if (signal?.aborted) return Promise.reject(Object.assign(new Error("Caller went away"), { status: 499 }));
     if (this.#canStart(owner)) { this.#start(owner); return Promise.resolve(); }
     if (this.waiting.length >= this.queueLimit) return Promise.reject(Object.assign(new Error("Sandbox is busy"), { status: 429 }));
     if (this.waiting.filter((entry) => entry.owner === owner).length >= this.ownerQueueLimit) {
       return Promise.reject(Object.assign(new Error("Too many scripts waiting for this account"), { status: 429 }));
     }
-    return new Promise((resolve) => this.waiting.push({ owner, resolve }));
+    return new Promise((resolve, reject) => {
+      const entry = { owner, resolve };
+      this.waiting.push(entry);
+      signal?.addEventListener("abort", () => {
+        const index = this.waiting.indexOf(entry);
+        if (index === -1) return;
+        this.waiting.splice(index, 1);
+        reject(Object.assign(new Error("Caller went away"), { status: 499 }));
+      }, { once: true });
+    });
   }
 
   release(owner = "") {

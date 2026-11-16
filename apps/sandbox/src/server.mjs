@@ -96,7 +96,7 @@ function send(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-async function run(input) {
+async function run(input, signal) {
   const { runtime, source } = input ?? {};
   if (!RUNTIMES.includes(runtime)) throw Object.assign(new Error("Unknown runtime"), { status: 400 });
   if (typeof source !== "string" || !source || Buffer.byteLength(source) > MAX_SOURCE) {
@@ -110,7 +110,7 @@ async function run(input) {
   const args = dockerArgs({
     runtime, name, context, image: IMAGES[runtime], network: NETWORK, dockerRuntime: DOCKER_RUNTIME, secretNames: Object.keys(secrets),
   });
-  await queue.acquire(owner);
+  await queue.acquire(owner, signal);
   try {
     const result = await docker(args, { stdin: source, timeoutMs: timeout + STARTUP_GRACE[runtime], name, secrets });
     // Docker reports its own failures (missing image, daemon down) as 125
@@ -132,7 +132,10 @@ const server = createServer(async (req, res) => {
       if (error.status) throw error;
       return send(res, 400, { error: "invalid JSON" });
     }
-    send(res, 200, await run(input));
+    // the API gave up on this request (its own timeout, or the Worker ended): a run still in line is dropped
+    const caller = new AbortController();
+    res.on("close", () => { if (!res.writableEnded) caller.abort(); });
+    send(res, 200, await run(input, caller.signal));
   } catch (error) {
     send(res, error.status ?? 500, { error: error.status ? error.message : "sandbox error" });
     if (!error.status) console.error(error);

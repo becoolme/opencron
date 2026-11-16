@@ -50,4 +50,20 @@ describe("RunQueue", () => {
   test("never gives one account more than the concurrency", () => {
     assert.equal(new RunQueue({ concurrency: 2, perOwner: 10 }).perOwner, 2);
   });
+
+  test("drops a waiting run when its caller goes away", async () => {
+    const queue = new RunQueue({ concurrency: 1, perOwner: 1 });
+    const first = track(queue.acquire("a"));
+    const caller = new AbortController();
+    const gone = track(queue.acquire("b", caller.signal));
+    const next = track(queue.acquire("c"));
+    caller.abort();
+    await settle();
+    assert.equal(first.done, true);
+    assert.equal(gone.error?.status, 499);
+    queue.release("a");
+    await settle();
+    assert.equal(gone.done, false, "the dropped run never starts");
+    assert.equal(next.done, true);
+  });
 });
