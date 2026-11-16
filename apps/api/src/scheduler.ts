@@ -6,36 +6,45 @@ import { maybeNotify } from "./notifier";
 import type { LoaderExecutionContext } from "./script-runner";
 
 /**
- * Jobs this process is running right now. A slow run can outlast the minute between ticks; without this the next tick
- * would pick the same job again, because next_run_at only moves once the run is recorded.
+ * Each tick claims a job before running it by moving next_run_at forward, guarded on the value it read. A second tick,
+ * another isolate or another replica that read the same row finds it changed and skips the job, so a slow run is never
+ * started twice and one due time runs once.
  */
-const inFlight = new Set<number>();
-
 export async function dispatchDueJobs(env: Env, ctx?: LoaderExecutionContext): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
   const { results } = await getDatabase(env).prepare(
     "SELECT * FROM jobs WHERE enabled = 1 AND next_run_at <= ? ORDER BY next_run_at ASC",
   ).bind(now).all<JobRow>();
 
-  await Promise.all(results.filter((job) => !inFlight.has(job.id)).map(async (job) => {
-    inFlight.add(job.id);
+  await Promise.all(results.map(async (job) => {
+    if (!(await claim(env, job, now))) return;
     try {
-      await runAndRecord(env, job, now, ctx);
-    } finally {
-      inFlight.delete(job.id);
+      await runAndRecord(env, job, ctx);
+    } catch (error) {
+      console.error(`[scheduler] job ${job.id} failed to run:`, error);
     }
   }));
 }
 
-async function runAndRecord(env: Env, job: JobRow, now: number, ctx?: LoaderExecutionContext): Promise<void> {
+/** Advances next_run_at when nobody else has; true when this caller owns the run. */
+async function claim(env: Env, job: JobRow, now: number): Promise<boolean> {
+  const claimed = await getDatabase(env).prepare(
+    "UPDATE jobs SET next_run_at = ? WHERE id = ? AND enabled = 1 AND next_run_at = ? RETURNING id",
+  ).bind(nextRunAt(job.cron, now), job.id, job.next_run_at).first<{ id: number }>();
+  return claimed !== null;
+}
+
+async function runAndRecord(env: Env, job: JobRow, ctx?: LoaderExecutionContext): Promise<void> {
   const result = await runJob(env, job, ctx);
-  await maybeNotify(env, job, result);
-  const newNext = nextRunAt(job.cron, now);
+  // Only the outcome is written: an edit saved while the job ran (cron, enabled, next run) stays as it was saved.
   await getDatabase(env).prepare(
-    `UPDATE jobs
-        SET last_run_at = ?, last_status = ?, next_run_at = ?, updated_at = ?
-      WHERE id = ?`,
-  ).bind(result.started_at, result.ok ? "success" : "failed", newNext, now, job.id).run();
+    "UPDATE jobs SET last_run_at = ?, last_status = ? WHERE id = ?",
+  ).bind(result.started_at, result.ok ? "success" : "failed", job.id).run();
+  try {
+    await maybeNotify(env, job, result);
+  } catch (error) {
+    console.error(`[scheduler] job ${job.id}: alerts failed:`, error);
+  }
 }
 
 export async function cleanupOldExecutions(env: Env, nowSec: number): Promise<void> {

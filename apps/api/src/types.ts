@@ -139,3 +139,32 @@ export function jobRowToDto(row: JobRow): JobDto {
     updated_at: row.updated_at,
   };
 }
+
+const HIDDEN = "***";
+
+function hideUrl(url: string): string {
+  try { return `${new URL(url).origin}/${HIDDEN}`; } catch { return HIDDEN; }
+}
+
+/**
+ * The job as a read-only API key sees it: request headers, the request body and alert credentials (webhook URLs, signing
+ * secrets, bot tokens) are replaced, so a key handed to a dashboard or an agent cannot be used to post as the account.
+ */
+export function redactJobDto(dto: JobDto): JobDto {
+  const hideValues = (headers: Record<string, string> | null | undefined) =>
+    headers ? Object.fromEntries(Object.keys(headers).map((name) => [name, HIDDEN])) : headers;
+  return {
+    ...dto,
+    headers: hideValues(dto.headers) ?? null,
+    body: dto.body == null ? dto.body : HIDDEN,
+    notify_targets: dto.notify_targets?.map((target): NotifyTarget => {
+      switch (target.type) {
+        case "http": return { ...target, url: hideUrl(target.url), ...(target.headers ? { headers: hideValues(target.headers)! } : {}) };
+        case "telegram": return { ...target, bot_token: HIDDEN };
+        case "lark":
+        case "dingtalk": return { ...target, url: hideUrl(target.url), ...(target.sign_secret ? { sign_secret: HIDDEN } : {}) };
+        default: return { ...target, url: hideUrl(target.url) };
+      }
+    }) ?? null,
+  };
+}

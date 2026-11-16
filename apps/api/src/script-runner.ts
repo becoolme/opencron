@@ -89,8 +89,8 @@ export async function runScriptJob(env: Env, job: JobRow, ctx?: LoaderExecutionC
       const res = await entrypoint.fetch(req);
       status_code = res.status;
       ok = res.ok;
-      const text = await res.text();
-      response_snippet = text.slice(0, 500);
+      // masked before it is cut, so a secret across the cut cannot leave a readable piece behind
+      response_snippet = (maskSecrets(await res.text(), secrets) ?? "").slice(0, 500);
     } else if (env.SANDBOX_URL) {
       const run = await runInSandbox(env, {
         runtime,
@@ -101,9 +101,11 @@ export async function runScriptJob(env: Env, job: JobRow, ctx?: LoaderExecutionC
         env: secrets,
       });
       ok = run.exit_code === 0 && !run.timed_out;
-      response_snippet = run.stdout ? tail(run.stdout, 500) : null;
+      const stdout = maskSecrets(run.stdout, secrets);
+      const stderr = maskSecrets(run.stderr.trim(), secrets);
+      response_snippet = stdout ? tail(stdout, 500) : null;
       if (run.timed_out) error = `Timed out after ${job.timeout_ms} ms`;
-      else if (!ok) error = run.stderr.trim() ? tail(run.stderr.trim(), 1000) : `Exited with code ${run.exit_code}`;
+      else if (!ok) error = stderr ? tail(stderr, 1000) : `Exited with code ${run.exit_code}`;
     } else {
       throw new Error(`This deployment cannot run ${runtime} scripts`);
     }

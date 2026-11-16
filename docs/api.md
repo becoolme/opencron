@@ -12,7 +12,7 @@ Each key has one of two scopes:
 
 | Scope | Can do |
 | --- | --- |
-| `read` | `GET` requests only: list jobs, runs and secret names. Any other method is refused with `403`. |
+| `read` | `GET` requests only: list jobs, runs and secret names. Any other method is refused with `403`. Jobs come back without credentials: header values, the request body, webhook URL paths, signing secrets and bot tokens read `***`. |
 | `write` | Everything the owner can do in the app, except managing API keys. |
 
 An account has at most 20 keys. A key acts as the account that created it and sees only that account's jobs and
@@ -54,14 +54,14 @@ Job fields:
 
 | Field | |
 | --- | --- |
-| `name` | Required. |
+| `name` | Required. An account has at most 200 jobs. |
 | `type` | `url` (default) or `script`. |
 | `cron` | Required. Five-field cron expression, in UTC. |
 | `enabled` | Default `true`. |
 | `timeout_ms` | 1000 to 60000. |
 | `url`, `method`, `headers`, `body` | For `url` jobs. `method` is one of GET, POST, PUT, PATCH, DELETE, HEAD. |
 | `script`, `runtime` | For `script` jobs. The script is at most 256 KB; `runtime` must be one `/api/meta` lists. See [scripts.md](scripts.md). |
-| `notify_targets` | Up to 10 alert targets for failed runs, or `null`. Each has a `type`: `http` (`url`, optional `headers`), `slack` or `discord` (`url`), `lark` or `dingtalk` (`url`, optional `sign_secret`), `telegram` (`bot_token`, `chat_id`). |
+| `notify_targets` | Up to 10 alert targets for failed runs, scheduled or started by hand, or `null`. Each has a `type`: `http` (`url`, optional `headers`), `slack` or `discord` (`url`), `lark` or `dingtalk` (`url`, optional `sign_secret`), `telegram` (`bot_token`, `chat_id`). |
 
 ```bash
 curl -X POST https://cron.example.com/api/jobs \

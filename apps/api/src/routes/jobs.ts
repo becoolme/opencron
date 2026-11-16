@@ -2,11 +2,15 @@ import type { Context } from "hono";
 import { getDatabase } from "../database";
 import { Hono } from "hono";
 import type { AppHonoEnv, JobRow } from "../types";
-import { jobRowToDto } from "../types";
+import { jobRowToDto, redactJobDto } from "../types";
 import { nextRunAt, validateCron } from "../cron";
 import { runJob } from "../runner";
+import { maybeNotify } from "../notifier";
 import { availableRuntimes, isScriptRuntime } from "../runtimes";
 import type { Env } from "../types";
+
+/** Jobs one account can keep; each runs on the shared scheduler tick. */
+export const MAX_JOBS_PER_ACCOUNT = 200;
 
 /** Largest script accepted, in characters. */
 const MAX_SCRIPT_LENGTH = 256 * 1024;
@@ -143,13 +147,19 @@ function executionContext(c: Context<AppHonoEnv, string>): ExecutionContext | un
   try { return c.executionCtx as unknown as ExecutionContext; } catch { return undefined; }
 }
 
+/** Read-only API keys get jobs without credentials; sessions and write keys can change them anyway. */
+function toDto(c: Context<AppHonoEnv, string>, row: JobRow) {
+  const dto = jobRowToDto(row);
+  return c.get("authMethod") === "api_key" && c.get("apiKeyScope") === "read" ? redactJobDto(dto) : dto;
+}
+
 export const jobsRouter = new Hono<AppHonoEnv>();
 
 jobsRouter.get("/", async (c) => {
   const { results } = await getDatabase(c.env).prepare(
     "SELECT * FROM jobs WHERE owner_user_id = ? ORDER BY id DESC",
   ).bind(c.get("userId")).all<JobRow>();
-  return c.json({ jobs: results.map(jobRowToDto) });
+  return c.json({ jobs: results.map((row) => toDto(c, row)) });
 });
 
 jobsRouter.post("/", async (c) => {
@@ -157,6 +167,11 @@ jobsRouter.post("/", async (c) => {
   const input = (await c.req.json().catch(() => ({}))) as CreateInput;
   const err = validateCreate(c.env, input);
   if (err) return c.json({ error: err }, 400);
+  const count = await getDatabase(c.env).prepare("SELECT COUNT(*) AS n FROM jobs WHERE owner_user_id = ?")
+    .bind(userId).first<{ n: number }>();
+  if (Number(count?.n ?? 0) >= MAX_JOBS_PER_ACCOUNT) {
+    return c.json({ error: `An account can have at most ${MAX_JOBS_PER_ACCOUNT} jobs` }, 400);
+  }
 
   const now = Math.floor(Date.now() / 1000);
   const type = input.type ?? "url";
@@ -192,7 +207,7 @@ jobsRouter.post("/", async (c) => {
       .first<JobRow>();
   }
 
-  return c.json({ job: jobRowToDto(row!) }, 201);
+  return c.json({ job: toDto(c, row!) }, 201);
 });
 
 type UpdateInput = Partial<CreateInput> & {
@@ -255,7 +270,7 @@ jobsRouter.get("/:id", async (c) => {
     "SELECT * FROM jobs WHERE id = ? AND owner_user_id = ?",
   ).bind(id, c.get("userId")).first<JobRow>();
   if (!row) return c.json({ error: "not found" }, 404);
-  return c.json({ job: jobRowToDto(row) });
+  return c.json({ job: toDto(c, row) });
 });
 
 jobsRouter.patch("/:id", async (c) => {
@@ -318,7 +333,7 @@ jobsRouter.patch("/:id", async (c) => {
   const updated = await getDatabase(c.env).prepare(
     "SELECT * FROM jobs WHERE id = ? AND owner_user_id = ?",
   ).bind(id, userId).first<JobRow>();
-  return c.json({ job: jobRowToDto(updated!) });
+  return c.json({ job: toDto(c, updated!) });
 });
 
 jobsRouter.post("/:id/run", async (c) => {
@@ -333,6 +348,12 @@ jobsRouter.post("/:id/run", async (c) => {
   await getDatabase(c.env).prepare(
     "UPDATE jobs SET last_run_at = ?, last_status = ?, updated_at = ? WHERE id = ? AND owner_user_id = ?",
   ).bind(result.started_at, result.ok ? "success" : "failed", Math.floor(Date.now() / 1000), id, userId).run();
+  // a failed manual run alerts like a scheduled one; the one-minute dedupe keeps repeated clicks quiet
+  try {
+    await maybeNotify(c.env, job, result);
+  } catch (error) {
+    console.error(`[jobs] job ${id}: alerts failed:`, error);
+  }
   return c.json({ result });
 });
 
@@ -363,5 +384,21 @@ jobsRouter.delete("/:id", async (c) => {
     db.prepare("DELETE FROM executions WHERE job_id = ?").bind(id),
     db.prepare("DELETE FROM jobs WHERE id = ? AND owner_user_id = ?").bind(id, userId),
   ]);
+  const kv = c.env.SCRIPT_KV;
+  if (kv) {
+    // Workers KV has no prefix delete; values a script kept there are removed after the response
+    const cleanup = deleteKvPrefix(kv, `opencron:v1:user:${userId}:job:${id}:`)
+      .catch((error) => console.error(`[jobs] job ${id}: KV cleanup failed:`, error));
+    executionContext(c)?.waitUntil(cleanup);
+  }
   return new Response(null, { status: 204 });
 });
+
+async function deleteKvPrefix(kv: KVNamespace, prefix: string): Promise<void> {
+  let cursor: string | undefined;
+  do {
+    const page = await kv.list({ prefix, ...(cursor ? { cursor } : {}) });
+    await Promise.all(page.keys.map((key) => kv.delete(key.name)));
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+}

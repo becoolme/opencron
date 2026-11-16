@@ -88,3 +88,29 @@ describe("cleanupOldExecutions", () => {
     expect(rows.results[0].started_at).toBe(recent);
   });
 });
+
+describe("claiming due jobs", () => {
+  it("runs a due job once when two ticks overlap", async () => {
+    fetchMock.get("https://example.test").intercept({ path: "/once" }).reply(200, "ok").persist();
+    const id = await insertJob({ url: "https://example.test/once" });
+
+    await Promise.all([dispatchDueJobs(env), dispatchDueJobs(env)]);
+
+    const { results } = await env.DB.prepare("SELECT id FROM executions WHERE job_id = ?").bind(id).all();
+    expect(results).toHaveLength(1);
+  });
+
+  it("keeps a schedule saved while the job ran", async () => {
+    const id = await insertJob({ url: "https://example.test/slow" });
+    fetchMock.get("https://example.test").intercept({ path: "/slow" }).reply(200, async () => {
+      await env.DB.prepare("UPDATE jobs SET cron = '0 0 1 1 *', next_run_at = 4102444800, enabled = 0 WHERE id = ?").bind(id).run();
+      return "ok";
+    });
+
+    await dispatchDueJobs(env);
+
+    const job = await env.DB.prepare("SELECT next_run_at, enabled, last_status FROM jobs WHERE id = ?").bind(id)
+      .first<{ next_run_at: number; enabled: number; last_status: string }>();
+    expect(job).toEqual({ next_run_at: 4102444800, enabled: 0, last_status: "success" });
+  });
+});

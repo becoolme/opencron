@@ -151,6 +151,16 @@ describe("secrets in script runs", () => {
     expect(result.error).toBe("denied for ***");
   });
 
+  it("are masked before long output is cut to its last 500 characters", async () => {
+    await put(alice, "API_TOKEN", { value: "tok-abcdef" });
+    const padding = "x".repeat(495);
+    fetchMock.get("https://sandbox.internal").intercept({ path: "/run", method: "POST" })
+      .reply(200, { exit_code: 0, stdout: `tok-abcdef${padding}`, stderr: "", timed_out: false, duration_ms: 5 });
+    const sandboxEnv = { ...env, LOADER: undefined, SANDBOX_URL: "https://sandbox.internal", SANDBOX_TOKEN: "test-sandbox-token-0123456789" } as Env;
+    const result = await runScriptJob(sandboxEnv, job({}));
+    expect(result.response_snippet).toBe(`***${padding}`);
+  });
+
   it("fails the run with a clear message when a secret can no longer be decrypted", async () => {
     await put(alice, "API_TOKEN", { value: "tok-abcdef" });
     const rotated = { ...env, BETTER_AUTH_SECRET: "a-different-secret-after-rotation-0123456789", SANDBOX_URL: "https://sandbox.internal" } as Env;

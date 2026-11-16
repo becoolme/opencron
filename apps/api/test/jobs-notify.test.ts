@@ -178,3 +178,30 @@ describe("PATCH /api/jobs/:id — notify_targets persistence", () => {
     expect(job.notify_targets).toEqual(target);
   });
 });
+
+describe("POST /api/jobs/:id/run — alerts", () => {
+  it("sends the job's alerts when a manual run fails", async () => {
+    let alerted = 0;
+    fetchMock.get("https://example.test").intercept({ path: "/bad" }).reply(500, "oops");
+    fetchMock.get("https://hooks.slack.com").intercept({ path: "/manual", method: "POST" }).reply(200, () => { alerted++; return "ok"; });
+    const created = await post("/api/jobs", { ...BASE_JOB, url: "https://example.test/bad", notify_targets: [{ type: "slack", url: "https://hooks.slack.com/manual" }] });
+    const { job } = (await created.json()) as { job: { id: number } };
+    const res = await post(`/api/jobs/${job.id}/run`, {});
+    expect(res.status).toBe(200);
+    expect(alerted).toBe(1);
+  });
+});
+
+describe("POST /api/jobs — account limit", () => {
+  it("refuses a job past the per-account limit", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const insert = env.DB.prepare(
+      `INSERT INTO jobs (name, url, method, cron, enabled, timeout_ms, next_run_at, created_at, updated_at, owner_user_id)
+       VALUES ('j', 'https://example.com', 'GET', '0 12 * * *', 0, 30000, ?, ?, ?, ?)`,
+    );
+    await env.DB.batch(Array.from({ length: 200 }, () => insert.bind(now, now, now, account.userId)));
+    const res = await post("/api/jobs", BASE_JOB);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(/at most 200 jobs/);
+  });
+});

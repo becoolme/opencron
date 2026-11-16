@@ -75,6 +75,28 @@ describe("API keys", () => {
     expect((await SELF.fetch("https://w/api/secrets/API_TOKEN", withKey(token, { method: "PUT", body: JSON.stringify({ value: "x" }) }))).status).toBe(403);
   });
 
+  it("with read scope do not see request or alert credentials", async () => {
+    const created = await SELF.fetch("https://w/api/jobs", {
+      method: "POST", headers: alice.headers,
+      body: JSON.stringify({
+        ...newJob, headers: { Authorization: "Bearer req-token" }, method: "POST", body: "{\"k\":\"v\"}",
+        notify_targets: [
+          { type: "slack", url: "https://hooks.slack.com/services/T/B/hook-secret" },
+          { type: "telegram", bot_token: "123:bot-secret", chat_id: "42" },
+          { type: "lark", url: "https://open.feishu.cn/hook/lark-secret", sign_secret: "sign-secret" },
+        ],
+      }),
+    });
+    expect(created.status).toBe(201);
+    const { token } = await createKey(alice, "read");
+    const text = await (await SELF.fetch("https://w/api/jobs", withKey(token))).text();
+    for (const secret of ["req-token", "hook-secret", "bot-secret", "lark-secret", "sign-secret", "\\\"v\\\""]) expect(text).not.toContain(secret);
+    expect(text).toContain("https://hooks.slack.com/***");
+    expect(text).toContain("\"chat_id\":\"42\"");
+    const own = await (await SELF.fetch("https://w/api/jobs", { headers: alice.headers })).text();
+    expect(own).toContain("hook-secret");
+  });
+
   it("with write scope can change jobs and secrets", async () => {
     const { token } = await createKey(alice, "write");
     const res = await SELF.fetch("https://w/api/jobs", withKey(token, { method: "POST", body: JSON.stringify(newJob) }));
