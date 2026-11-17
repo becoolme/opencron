@@ -2,10 +2,10 @@
   "packages": {
     "kit": {
       "ref": "origin/main",
-      "commit": "4a02d75c2a1d016f686cf93cb0f6f4a47855e695",
+      "commit": "7a8c07384ed33afe8d273a4fdc45ca505b63dbf1",
       "files": {
         "package.json": "a12f77480531450bb1a07de1297f036a4b471ce52fc064243341c255b0fd13ae",
-        "src/netguard.ts": "15323245d2f92445849a85f46b6ea3512a94d76ea52b0f6ee323eaa8a3208f4b",
+        "src/netguard.ts": "17e06bce24beea288627cddfc9878be8bea46d1cced781139c1cfc2615de21f9",
         "src/outbound-proxy.test.ts": "b9bd88a3a624e6d1fc271be8c7d538001b073aec0b90213fc582baf3898c72d2",
         "src/pinnedfetch.test.ts": "3d5aeb8408c49e778f4899ed19fe795b84f4900673660dededf32240e42f43e2",
         "src/pinnedfetch.ts": "bdfcb793328fd3db88d8d22c4a16a3fbd2b2a176ba7c572a5d15985906c60966",
@@ -19,7 +19,7 @@
     },
     "mcp-rest": {
       "ref": "origin/main",
-      "commit": "4a02d75c2a1d016f686cf93cb0f6f4a47855e695",
+      "commit": "7a8c07384ed33afe8d273a4fdc45ca505b63dbf1",
       "files": {
         "README.md": "b36f8e42889d1fb9c2cf54305ab7c113dbd87b7abfcf22f054aea90580e59630",
         "package.json": "089bb324dfb8e5aae60fed171eea3ea49e1cd09a4402ee5bef63ef89201b108d",

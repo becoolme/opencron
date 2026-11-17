@@ -79,11 +79,17 @@ function v6Blocked(b: number[]): boolean {
   const zeros = (from: number, to: number) => b.slice(from, to).every((x) => x === 0);
   if (zeros(0, 15) && (b[15] === 0 || b[15] === 1)) return true; // :: and ::1
   if (zeros(0, 10) && b[10] === 0xff && b[11] === 0xff) return v4Blocked(b.slice(12)); // ::ffff:a.b.c.d
+  if (zeros(0, 8) && b[8] === 0xff && b[9] === 0xff && b[10] === 0 && b[11] === 0) return v4Blocked(b.slice(12)); // ::ffff:0:a.b.c.d, IPv4-translated
   if (zeros(0, 12)) return v4Blocked(b.slice(12)); // IPv4-compatible
   if (b[0] === 0x00 && b[1] === 0x64 && b[2] === 0xff && b[3] === 0x9b && zeros(4, 12)) return v4Blocked(b.slice(12)); // NAT64
+  if (b[0] === 0x00 && b[1] === 0x64 && b[2] === 0xff && b[3] === 0x9b && b[4] === 0x00 && b[5] === 0x01) return true; // 64:ff9b:1::/48, local-use NAT64
   if (b[0] === 0x20 && b[1] === 0x02) return v4Blocked(b.slice(2, 6)); // 6to4
   if (b[0] === 0x20 && b[1] === 0x01 && (b[2] === 0 && b[3] === 0)) return true; // Teredo
+  if (b[0] === 0x20 && b[1] === 0x01 && b[2] === 0x00 && b[3] >= 0x10 && b[3] <= 0x2f) return true; // ORCHID, ORCHIDv2
+  if (b[0] === 0x20 && b[1] === 0x01 && b[2] === 0x00 && b[3] === 0x02 && b[4] === 0 && b[5] === 0) return true; // 2001:2::/48 benchmarking
   if (b[0] === 0x20 && b[1] === 0x01 && b[2] === 0x0d && b[3] === 0xb8) return true; // documentation
+  if (b[0] === 0x3f && b[1] === 0xff && (b[2] & 0xf0) === 0) return true; // 3fff::/20 documentation
+  if (b[0] === 0x5f && b[1] === 0x00) return true; // 5f00::/16 SRv6 SIDs
   if (b[0] === 0x01 && b[1] === 0x00 && zeros(2, 8)) return true; // discard-only
   if ((b[0] & 0xfe) === 0xfc) return true; // fc00::/7 unique local
   if (b[0] === 0xfe && (b[1] & 0xc0) === 0x80) return true; // fe80::/10 link local
@@ -318,7 +324,10 @@ export class RedirectCookies {
  * an internal one). Returns the final response and URL; throws BlockedTarget for a refused hop. With `follow: false` the
  * first response is returned as it is, redirect or not, so the caller can judge the redirect itself.
  */
-export async function guardedFetch(url: string, init: RequestInit = {}, { follow = true, protectBody = false, publicOnly = false }: { follow?: boolean; protectBody?: boolean; publicOnly?: boolean } = {}): Promise<{ res: Response; url: string }> {
+/** One response on the way to the final one: where it came from, its status, where it pointed and how long it took. */
+export type FetchHop = { url: string; status: number; location: string | null; ms: number };
+
+export async function guardedFetch(url: string, init: RequestInit = {}, { follow = true, protectBody = false, publicOnly = false, trace }: { follow?: boolean; protectBody?: boolean; publicOnly?: boolean; /** filled with one entry per response received, the final one included */ trace?: FetchHop[] } = {}): Promise<{ res: Response; url: string }> {
   let current = url;
   let method = init.method ?? "GET";
   let body = init.body;
@@ -332,6 +341,7 @@ export async function guardedFetch(url: string, init: RequestInit = {}, { follow
     const cookie = hop ? cookies.header(u, headers.get("cookie")) : null;
     if (cookie) sent.set("cookie", cookie);
     const req = { ...init, method, body, headers: sent, redirect: "manual" as const };
+    const started = Date.now();
     // the connection goes to the addresses that were just validated, not to whatever the name resolves to next
     let res: Response;
     try {
@@ -349,6 +359,7 @@ export async function guardedFetch(url: string, init: RequestInit = {}, { follow
       res = await pinnedFetch(current, req, fresh);
     }
     const location = res.headers.get("location");
+    trace?.push({ url: current, status: res.status, location, ms: Date.now() - started });
     if (!follow || res.status < 300 || res.status >= 400 || !location || [304].includes(res.status)) return { res, url: current };
     await res.body?.cancel();
     if (hop >= MAX_REDIRECTS) throw new Error("Too many redirects");
