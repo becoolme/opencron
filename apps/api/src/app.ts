@@ -43,6 +43,8 @@ export function createApp(edition: Edition = community): Hono<AppHonoEnv> {
     if (c.req.path.startsWith("/api/invite/")) return next();
     return workspaceMiddleware(c, next);
   });
+  // Before the built-in routes, so the edition's routes and checks run first.
+  edition.mount?.({ app, api });
   api.route("/workspaces", workspacesRouter);
   api.route("/projects", projectsRouter);
   api.route("/members", membersRouter);
@@ -57,7 +59,6 @@ export function createApp(edition: Edition = community): Hono<AppHonoEnv> {
   // The workspace's plan and how much of it is used.
   api.get("/usage", async (c) => c.json(await usage(c)));
 
-  edition.mount?.({ app, api });
   app.route("/api", api);
   return app;
 }

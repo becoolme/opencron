@@ -37,8 +37,9 @@ export interface Edition {
   /** The plans offered to a workspace, cheapest first. */
   offers?(env: Env, workspaceId: string): Promise<PlanOffer[]>;
   /**
-   * Adds the edition's own routes. `app` is public and sees requests before the session check; `api` is under /api,
-   * behind the session and workspace checks.
+   * Adds the edition's own routes and checks. `app` is public and sees requests before the session check; `api` is
+   * under /api, behind the session and workspace checks. Both run before the built-in routes, so a handler that calls
+   * `next()` can guard one of them.
    */
   mount?(routes: { app: Hono<AppHonoEnv>; api: Hono<AppHonoEnv> }): void;
 }

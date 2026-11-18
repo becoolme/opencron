@@ -87,3 +87,22 @@ describe("plan limits", () => {
     expect((await call("/api/usage", "GET", undefined, big)).body.jobs).toEqual({ total: 201, active: 1, max: 1000 });
   });
 });
+
+describe("edition routes", () => {
+  it("run before the built-in ones, behind the session and workspace checks", async () => {
+    const guarded = createApp({
+      id: "test",
+      plan: async () => null,
+      mount: ({ app: root, api }) => {
+        root.get("/api/edition/ping", (c) => c.json({ public: true }));
+        api.get("/edition/whoami", (c) => c.json({ workspace: c.get("workspaceId") }));
+        api.delete("/workspaces/current", (c) => c.json({ error: "held" }, 409));
+      },
+    });
+    expect((await guarded.request("https://w/api/edition/ping", {}, env)).status).toBe(200);
+    expect((await guarded.request("https://w/api/edition/whoami", {}, env)).status).toBe(401);
+    const whoami = await call("/api/edition/whoami", "GET", undefined, guarded);
+    expect(whoami.body.workspace).toBe(`ws_${account.userId}`);
+    expect((await call("/api/workspaces/current", "DELETE", undefined, guarded)).status).toBe(409);
+  });
+});
