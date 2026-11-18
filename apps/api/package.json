@@ -27,6 +27,8 @@
     "db:migrate:remote:0009": "wrangler d1 execute DB --remote --file=./migrations/0009_api_keys.sql",
     "db:migrate:local:0010": "wrangler d1 execute DB --local --file=./migrations/0010_workspaces.sql",
     "db:migrate:remote:0010": "wrangler d1 execute DB --remote --file=./migrations/0010_workspaces.sql",
+    "db:migrate:local:0011": "wrangler d1 execute DB --local --file=./migrations/0011_alert_channels.sql",
+    "db:migrate:remote:0011": "wrangler d1 execute DB --remote --file=./migrations/0011_alert_channels.sql",
     "test:postgres": "tsx scripts/test-postgres.ts",
     "test:smoke": "tsx scripts/smoke-database.ts",
     "typecheck": "tsc --noEmit",

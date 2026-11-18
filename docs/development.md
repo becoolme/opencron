@@ -32,6 +32,8 @@ pnpm db:migrate:local:0006
 pnpm db:migrate:local:0007
 pnpm db:migrate:local:0008
 pnpm db:migrate:local:0009
+pnpm db:migrate:local:0010
+pnpm db:migrate:local:0011
 ```
 
 如果本地已经执行过前面的迁移，只执行尚未执行的编号。每个脚本是一次性迁移，不要重复执行。
@@ -161,6 +163,8 @@ pnpm db:migrate:remote:0006
 pnpm db:migrate:remote:0007
 pnpm db:migrate:remote:0008
 pnpm db:migrate:remote:0009
+pnpm db:migrate:remote:0010
+pnpm db:migrate:remote:0011
 pnpm --filter @opencron/api exec wrangler secret put BETTER_AUTH_SECRET
 pnpm --filter @opencron/api exec wrangler kv namespace create SCRIPT_KV
 ```

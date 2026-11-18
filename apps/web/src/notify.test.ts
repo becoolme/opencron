@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftToTarget, emptyNotifyDraft, maskSecret, targetSummary } from "./notify";
+import { channelSummary, configToDraft, draftToConfig, draftToTarget, emptyNotifyDraft } from "./notify";
 import type { NotifyDraft } from "./types";
 
 function draft(patch: Partial<NotifyDraft>): NotifyDraft {
@@ -44,15 +44,29 @@ describe("draftToTarget", () => {
   });
 });
 
-describe("summaries", () => {
-  it("masks secrets", () => {
-    expect(maskSecret("")).toBe("");
-    expect(maskSecret("short")).toBe("•••");
-    expect(maskSecret("1234567890abcdef")).toBe("1234…cdef");
+describe("saved channels", () => {
+  it("fills a draft from a masked config and sends it back unchanged", () => {
+    const masked = { url: "https://open.feishu.cn/…1234", sign_secret: "***" };
+    const draft = configToDraft("lark", masked);
+    expect(draft).toMatchObject({ type: "lark", url: masked.url, sign_secret: "***" });
+    expect(draftToConfig(draft, true).config).toEqual(masked);
   });
 
-  it("never shows a webhook path, which often holds the token", () => {
-    expect(targetSummary({ type: "slack", url: "https://hooks.slack.com/services/T0/B0/secret" })).toBe("hooks.slack.com/…");
-    expect(targetSummary({ type: "telegram", bot_token: "1234567890:ABCDEFGH", chat_id: "-100" })).toBe("1234…EFGH → -100");
+  it("removes the signing secret when it is cleared while editing", () => {
+    const draft = configToDraft("dingtalk", { url: "https://oapi.dingtalk.com/…abcd", sign_secret: "***" });
+    draft.sign_secret = "";
+    expect(draftToConfig(draft, true).config).toEqual({ url: "https://oapi.dingtalk.com/…abcd", sign_secret: null });
+    expect(draftToConfig(draft, false).config).toEqual({ url: "https://oapi.dingtalk.com/…abcd" });
+  });
+
+  it("keeps masked header values as JSON", () => {
+    const draft = configToDraft("http", { url: "https://example.com/…hook", headers: { Authorization: "***" } });
+    expect(draftToConfig(draft, true).config).toEqual({ url: "https://example.com/…hook", headers: { Authorization: "***" } });
+  });
+
+  it("summarises a channel without its secrets", () => {
+    expect(channelSummary("slack", { url: "https://hooks.slack.com/…1234" })).toBe("hooks.slack.com");
+    expect(channelSummary("telegram", { bot_token: "…WXYZ", chat_id: "-100" })).toBe("…WXYZ → -100");
+    expect(channelSummary("slack", null)).toBeTruthy();
   });
 });

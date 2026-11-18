@@ -9,6 +9,9 @@ import { maybeNotify } from "../notifier";
 import { availableRuntimes, isScriptRuntime } from "../runtimes";
 import type { Env } from "../types";
 import { canSeeProject, projectCondition, projectForNewJob } from "../workspace";
+import {
+  channelIdsByJob, defaultChannelIds, dropForeignChannelsStatement, parseChannelIds, setJobChannelStatements,
+} from "../channels";
 
 /** Jobs one workspace can keep; each runs on the shared scheduler tick. */
 export const MAX_JOBS_PER_WORKSPACE = 200;
@@ -36,73 +39,14 @@ type CreateInput = {
   type?: string;
   script?: string;
   runtime?: string;
+  channel_ids?: unknown;
   notify_targets?: unknown;
   project_id?: unknown;
 };
 
-const ALLOWED_NOTIFY_TYPES = new Set(["http", "lark", "telegram", "dingtalk", "slack", "discord"]);
-
-const ALLOWED_KEYS_BY_TYPE: Record<string, Set<string>> = {
-  http:     new Set(["type", "url", "headers"]),
-  lark:     new Set(["type", "url", "sign_secret"]),
-  telegram: new Set(["type", "bot_token", "chat_id"]),
-  dingtalk: new Set(["type", "url", "sign_secret"]),
-  slack:    new Set(["type", "url"]),
-  discord:  new Set(["type", "url"]),
-};
-
-function validateNotifyTargets(raw: unknown): string | null {
-  if (raw === null || raw === undefined) return null;
-  if (!Array.isArray(raw)) return "notify_targets must be an array or null";
-  if (raw.length > 10) return "notify_targets max 10 entries";
-  for (const [i, t] of raw.entries()) {
-    if (!t || typeof t !== "object" || Array.isArray(t)) return `notify_targets[${i}] must be an object`;
-    const obj = t as Record<string, unknown>;
-    const type = obj.type;
-    if (typeof type !== "string" || !ALLOWED_NOTIFY_TYPES.has(type)) return `notify_targets[${i}].type invalid`;
-    const allowed = ALLOWED_KEYS_BY_TYPE[type];
-    for (const k of Object.keys(obj)) {
-      if (!allowed.has(k)) return `notify_targets[${i}] has unknown field "${k}"`;
-    }
-
-    switch (type) {
-      case "http": {
-        if (typeof obj.url !== "string" || obj.url === "") return `notify_targets[${i}].url required`;
-        if (!/^https?:\/\//.test(obj.url)) return `notify_targets[${i}].url must start with http:// or https://`;
-        if (obj.headers !== undefined) {
-          if (!obj.headers || typeof obj.headers !== "object" || Array.isArray(obj.headers)) return `notify_targets[${i}].headers must be an object`;
-          for (const [hk, hv] of Object.entries(obj.headers as Record<string, unknown>)) {
-            if (typeof hk !== "string" || typeof hv !== "string") return `notify_targets[${i}].headers values must be strings`;
-          }
-        }
-        break;
-      }
-      case "lark":
-      case "dingtalk":
-      case "slack":
-      case "discord": {
-        if (typeof obj.url !== "string" || obj.url === "") return `notify_targets[${i}].url required`;
-        if (!obj.url.startsWith("https://")) return `notify_targets[${i}].url must start with https://`;
-        if ("sign_secret" in obj && obj.sign_secret !== undefined) {
-          if (typeof obj.sign_secret !== "string" || obj.sign_secret === "") return `notify_targets[${i}].sign_secret must be a non-empty string`;
-        }
-        break;
-      }
-      case "telegram": {
-        if (typeof obj.bot_token !== "string" || obj.bot_token === "") return `notify_targets[${i}].bot_token required`;
-        if (typeof obj.chat_id !== "string" || obj.chat_id === "") return `notify_targets[${i}].chat_id required`;
-        break;
-      }
-    }
-  }
-  return null;
-}
-
-function normalizeNotifyTargets(raw: unknown): string | null {
-  if (raw === undefined || raw === null) return null;
-  if (Array.isArray(raw) && raw.length === 0) return null;
-  return JSON.stringify(raw);
-}
+/** notify_targets kept alert destinations on each job; they now live in alert channels. */
+export const NOTIFY_TARGETS_GONE =
+  "notify_targets was replaced by alert channels: create channels with /api/channels and send their ids as channel_ids";
 
 function validateCreate(env: Env, input: CreateInput): string | null {
   if (!input.name || typeof input.name !== "string") return "name is required";
@@ -136,10 +80,7 @@ function validateCreate(env: Env, input: CreateInput): string | null {
     if (input.headers != null) return "headers must not be set when type='script'";
     if (input.body != null) return "body must not be set when type='script'";
   }
-  if (input.notify_targets !== undefined) {
-    const ntErr = validateNotifyTargets(input.notify_targets);
-    if (ntErr) return ntErr;
-  }
+  if (input.notify_targets !== undefined) return NOTIFY_TARGETS_GONE;
   return null;
 }
 
@@ -150,9 +91,15 @@ function executionContext(c: Context<AppHonoEnv, string>): ExecutionContext | un
 }
 
 /** Read-only API keys get jobs without credentials; sessions and write keys can change them anyway. */
-function toDto(c: Context<AppHonoEnv, string>, row: JobRow) {
-  const dto = jobRowToDto(row);
+function toDto(c: Context<AppHonoEnv, string>, row: JobRow, channelIds: string[]) {
+  const dto = jobRowToDto(row, channelIds);
   return c.get("authMethod") === "api_key" && c.get("apiKeyScope") === "read" ? redactJobDto(dto) : dto;
+}
+
+async function jobResponse(c: Context<AppHonoEnv, string>, id: number) {
+  const row = await getDatabase(c.env).prepare("SELECT * FROM jobs WHERE id = ?").bind(id).first<JobRow>();
+  const channels = await channelIdsByJob(c.env, [id]);
+  return toDto(c, row!, channels.get(id) ?? []);
 }
 
 /** A job of the current workspace that this request may see, or null. */
@@ -170,7 +117,8 @@ jobsRouter.get("/", async (c) => {
   const { results } = await getDatabase(c.env).prepare(
     `SELECT * FROM jobs WHERE organization_id = ? AND ${projects.sql} ORDER BY id DESC`,
   ).bind(c.get("workspaceId"), ...projects.params).all<JobRow>();
-  return c.json({ jobs: results.map((row) => toDto(c, row)) });
+  const channels = await channelIdsByJob(c.env, results.map((row) => row.id));
+  return c.json({ jobs: results.map((row) => toDto(c, row, channels.get(row.id) ?? [])) });
 });
 
 jobsRouter.post("/", async (c) => {
@@ -186,6 +134,11 @@ jobsRouter.post("/", async (c) => {
   if (Number(count?.n ?? 0) >= MAX_JOBS_PER_WORKSPACE) {
     return c.json({ error: `A workspace can have at most ${MAX_JOBS_PER_WORKSPACE} jobs` }, 400);
   }
+  // without channel_ids, a new job gets the workspace's default channels
+  const channelIds = input.channel_ids === undefined
+    ? await defaultChannelIds(c.env, workspaceId, project.id)
+    : await parseChannelIds(c.env, workspaceId, project.id, input.channel_ids);
+  if ("error" in channelIds) return c.json({ error: channelIds.error }, 400);
 
   const now = Math.floor(Date.now() / 1000);
   const type = input.type ?? "url";
@@ -201,34 +154,37 @@ jobsRouter.post("/", async (c) => {
     row = await getDatabase(c.env).prepare(
       `INSERT INTO jobs (name, url, method, headers, body, cron, enabled, timeout_ms,
                          next_run_at, created_at, updated_at, type, script, script_version,
-                         notify_targets, owner_user_id, organization_id, project_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'url', NULL, 1, ?, ?, ?, ?)
+                         owner_user_id, organization_id, project_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'url', NULL, 1, ?, ?, ?)
        RETURNING *`,
     )
       .bind(input.name, input.url, method, headersJson, body, input.cron, enabled, timeout, next, now, now,
-            normalizeNotifyTargets(input.notify_targets), userId, workspaceId, project.id)
+            userId, workspaceId, project.id)
       .first<JobRow>();
   } else {
     row = await getDatabase(c.env).prepare(
       `INSERT INTO jobs (name, url, method, headers, body, cron, enabled, timeout_ms,
                          next_run_at, created_at, updated_at, type, script, script_version,
-                         runtime, notify_targets, owner_user_id, organization_id, project_id)
-       VALUES (?, NULL, 'GET', NULL, NULL, ?, ?, ?, ?, ?, ?, 'script', ?, 1, ?, ?, ?, ?, ?)
+                         runtime, owner_user_id, organization_id, project_id)
+       VALUES (?, NULL, 'GET', NULL, NULL, ?, ?, ?, ?, ?, ?, 'script', ?, 1, ?, ?, ?, ?)
        RETURNING *`,
     )
       .bind(input.name, input.cron, enabled, timeout, next, now, now, input.script!, input.runtime ?? "javascript",
-            normalizeNotifyTargets(input.notify_targets), userId, workspaceId, project.id)
+            userId, workspaceId, project.id)
       .first<JobRow>();
   }
 
-  return c.json({ job: toDto(c, row!) }, 201);
+  if (channelIds.length > 0) {
+    const db = getDatabase(c.env);
+    await db.batch(setJobChannelStatements(db, row!.id, channelIds));
+  }
+  return c.json({ job: toDto(c, row!, channelIds) }, 201);
 });
 
 type UpdateInput = Partial<CreateInput> & {
   enabled?: boolean;
   type?: string;
   script?: string | null;
-  notify_targets?: unknown;
 };
 
 function validateUpdate(env: Env, input: UpdateInput, existingType: "url" | "script"): string | null {
@@ -271,17 +227,14 @@ function validateUpdate(env: Env, input: UpdateInput, existingType: "url" | "scr
       if (runtimeErr) return runtimeErr;
     }
   }
-  if (input.notify_targets !== undefined) {
-    const ntErr = validateNotifyTargets(input.notify_targets);
-    if (ntErr) return ntErr;
-  }
+  if (input.notify_targets !== undefined) return NOTIFY_TARGETS_GONE;
   return null;
 }
 
 jobsRouter.get("/:id", async (c) => {
   const row = await findJob(c, Number(c.req.param("id")));
   if (!row) return c.json({ error: "not found" }, 404);
-  return c.json({ job: toDto(c, row) });
+  return c.json({ job: await jobResponse(c, row.id) });
 });
 
 jobsRouter.patch("/:id", async (c) => {
@@ -299,6 +252,12 @@ jobsRouter.patch("/:id", async (c) => {
     const project = await projectForNewJob(c, input.project_id);
     if ("error" in project) return c.json({ error: project.error }, 400);
     projectId = project.id;
+  }
+  let channelIds: string[] | null = null;
+  if (input.channel_ids !== undefined) {
+    const parsed = await parseChannelIds(c.env, existing.organization_id!, projectId!, input.channel_ids);
+    if ("error" in parsed) return c.json({ error: parsed.error }, 400);
+    channelIds = parsed;
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -320,9 +279,6 @@ jobsRouter.patch("/:id", async (c) => {
     if (runtimeChanged) merged.runtime = input.runtime as JobRow["runtime"];
     if (scriptChanged || runtimeChanged) merged.script_version = existing.script_version + 1;
   }
-  if (input.notify_targets !== undefined) {
-    merged.notify_targets = normalizeNotifyTargets(input.notify_targets);
-  }
   merged.updated_at = now;
 
   const cronChanged = input.cron != null && input.cron !== existing.cron;
@@ -331,23 +287,26 @@ jobsRouter.patch("/:id", async (c) => {
     merged.next_run_at = nextRunAt(merged.cron, now);
   }
 
-  await getDatabase(c.env).prepare(
-    `UPDATE jobs
-       SET name=?, url=?, method=?, headers=?, body=?, cron=?, enabled=?,
-           timeout_ms=?, next_run_at=?, updated_at=?, script=?, script_version=?,
-           runtime=?, notify_targets=?, project_id=?
-     WHERE id=? AND organization_id=?`,
-  )
-    .bind(
+  const db = getDatabase(c.env);
+  await db.batch([
+    db.prepare(
+      `UPDATE jobs
+         SET name=?, url=?, method=?, headers=?, body=?, cron=?, enabled=?,
+             timeout_ms=?, next_run_at=?, updated_at=?, script=?, script_version=?,
+             runtime=?, project_id=?
+       WHERE id=? AND organization_id=?`,
+    ).bind(
       merged.name, merged.url, merged.method, merged.headers, merged.body,
       merged.cron, merged.enabled, merged.timeout_ms, merged.next_run_at,
       merged.updated_at, merged.script, merged.script_version,
-      merged.runtime ?? "javascript", merged.notify_targets, projectId, id, existing.organization_id,
-    )
-    .run();
+      merged.runtime ?? "javascript", projectId, id, existing.organization_id,
+    ),
+    // a job moved to another project keeps only the channels it can use there
+    ...(channelIds ? setJobChannelStatements(db, id, channelIds)
+      : projectId !== existing.project_id ? [dropForeignChannelsStatement(db, id, projectId!)] : []),
+  ]);
 
-  const updated = await getDatabase(c.env).prepare("SELECT * FROM jobs WHERE id = ?").bind(id).first<JobRow>();
-  return c.json({ job: toDto(c, updated!) });
+  return c.json({ job: await jobResponse(c, id) });
 });
 
 jobsRouter.post("/:id/run", async (c) => {
@@ -387,6 +346,7 @@ jobsRouter.delete("/:id", async (c) => {
   const db = getDatabase(c.env);
   await db.batch([
     db.prepare("DELETE FROM executions WHERE job_id = ?").bind(id),
+    db.prepare("DELETE FROM job_channels WHERE job_id = ?").bind(id),
     db.prepare("DELETE FROM jobs WHERE id = ?").bind(id),
   ]);
   const kv = c.env.SCRIPT_KV;

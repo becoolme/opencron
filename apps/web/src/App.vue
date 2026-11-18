@@ -9,6 +9,7 @@ import JobEditor from "./components/JobEditor.vue";
 import JobsList from "./components/JobsList.vue";
 import RunsPage from "./components/RunsPage.vue";
 import SecretsPage from "./components/SecretsPage.vue";
+import ChannelsPage from "./components/ChannelsPage.vue";
 import KeysPage from "./components/KeysPage.vue";
 import InvitePage from "./components/InvitePage.vue";
 import MembersPage from "./components/MembersPage.vue";
@@ -76,6 +77,7 @@ const crumbs = computed(() => {
     case "sign-up": return [{ label: t("Sign up") }];
     case "runs": return [{ label: t("Runs") }];
     case "secrets": return [{ label: t("Secrets") }];
+    case "channels": return [{ label: t("Alert channels") }];
     case "keys": return [{ label: t("API & MCP") }];
     case "members": return [{ label: t("Members") }];
     case "settings": return [{ label: t("Workspace settings") }];
@@ -118,6 +120,7 @@ async function signOut(): Promise<void> {
       <JobsList v-if="route.name === 'jobs'" />
       <RunsPage v-else-if="route.name === 'runs'" />
       <SecretsPage v-else-if="route.name === 'secrets'" :key="`secrets-${workspace?.id}`" @toast="showToast" />
+      <ChannelsPage v-else-if="route.name === 'channels'" :key="`channels-${workspace?.id}`" @toast="showToast" />
       <KeysPage v-else-if="route.name === 'keys'" :key="`keys-${workspace?.id}`" @toast="showToast" />
       <MembersPage v-else-if="route.name === 'members'" :key="`members-${workspace?.id}`" :user-id="session.user.id" @toast="showToast" />
       <SettingsPage v-else-if="route.name === 'settings'" :key="`settings-${workspace?.id}`" :user-id="session.user.id" @toast="showToast" />

@@ -5,6 +5,7 @@ import { jobsRouter } from "./routes/jobs";
 import { executionsRouter } from "./routes/executions";
 import { secretsRouter } from "./routes/secrets";
 import { keysRouter } from "./routes/keys";
+import { channelsRouter } from "./routes/channels";
 import { inviteRouter, invitationsRouter, membersRouter, projectsRouter, workspacesRouter } from "./routes/workspaces";
 import { workspaceMiddleware } from "./workspace";
 import { availableRuntimes } from "./runtimes";
@@ -40,6 +41,7 @@ api.route("/jobs", jobsRouter);
 api.route("/executions", executionsRouter);
 api.route("/secrets", secretsRouter);
 api.route("/keys", keysRouter);
+api.route("/channels", channelsRouter);
 // What this deployment can do, so the app only offers what will run.
 api.get("/meta", (c) => c.json({ runtimes: availableRuntimes(c.env) }));
 

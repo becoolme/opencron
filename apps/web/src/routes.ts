@@ -4,6 +4,7 @@ export type Route =
   | { name: "jobs" }
   | { name: "runs" }
   | { name: "secrets" }
+  | { name: "channels" }
   | { name: "keys" }
   | { name: "members" }
   | { name: "settings" }
@@ -29,6 +30,7 @@ export function parse(path: string): Route {
   if (clean === "/sign-up") return { name: "sign-up" };
   if (clean === "/runs") return { name: "runs" };
   if (clean === "/secrets") return { name: "secrets" };
+  if (clean === "/channels") return { name: "channels" };
   if (clean === "/keys") return { name: "keys" };
   if (clean === "/members") return { name: "members" };
   if (clean === "/settings") return { name: "settings" };

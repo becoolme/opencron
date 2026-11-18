@@ -11,8 +11,8 @@ Scheduled HTTP calls and script jobs, with run history and failure alerts. Runs 
 
   See [docs/scripts.md](docs/scripts.md), [docs/docker.md](docs/docker.md) and
   [docs/deploy.md](docs/deploy.md#python-and-go-on-cloudflare).
-- **Alerts** go to Slack, Discord, Telegram, Lark, DingTalk or any HTTP endpoint (optionally HMAC-signed) when a run
-  fails.
+- **Alert channels**: set up Slack, Discord, Telegram, Lark, DingTalk or any HTTP endpoint once, pick them on each job,
+  and mark defaults for new jobs. See [docs/alerts.md](docs/alerts.md).
 - **Accounts** with email and password. `SIGNUP=closed` lets only the first account, and people with an invitation,
   sign up.
 - **Secrets** per workspace, passed to script jobs as environment variables and masked in run output.
@@ -46,7 +46,7 @@ pnpm install
 cp apps/api/.dev.vars.example apps/api/.dev.vars   # set BETTER_AUTH_SECRET
 pnpm db:init:local && pnpm db:migrate:local:0002 && pnpm db:migrate:local:0003 \
   && pnpm db:migrate:local:0004 && pnpm db:migrate:local:0005 && pnpm db:migrate:local:0006 && pnpm db:migrate:local:0007 \
-  && pnpm db:migrate:local:0008 && pnpm db:migrate:local:0009
+  && pnpm db:migrate:local:0008 && pnpm db:migrate:local:0009 && pnpm db:migrate:local:0010 && pnpm db:migrate:local:0011
 pnpm dev                                           # http://localhost:5173
 ```
 
