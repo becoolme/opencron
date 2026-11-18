@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env, SELF } from "cloudflare:test";
-import { applyMigrations, clearDb, createTestAccount, type TestAccount } from "./helpers";
+import { applyMigrations, clearDb, createTestAccount, personalWorkspace, type TestAccount } from "./helpers";
 
 let account: TestAccount;
 
@@ -14,10 +14,11 @@ const auth = (): Record<string, string> => account.headers;
 
 async function seed() {
   const now = Math.floor(Date.now() / 1000);
+  const { workspaceId, projectId } = await personalWorkspace(account);
   await env.DB.prepare(
-    `INSERT INTO jobs (name, url, method, cron, enabled, timeout_ms, next_run_at, created_at, updated_at, owner_user_id)
-     VALUES ('j','https://a.b','GET','0 12 * * *',1,30000,?,?,?,?)`,
-  ).bind(now, now, now, account.userId).run();
+    `INSERT INTO jobs (name, url, method, cron, enabled, timeout_ms, next_run_at, created_at, updated_at, owner_user_id, organization_id, project_id)
+     VALUES ('j','https://a.b','GET','0 12 * * *',1,30000,?,?,?,?,?,?)`,
+  ).bind(now, now, now, account.userId, workspaceId, projectId).run();
   const job = await env.DB.prepare("SELECT id FROM jobs LIMIT 1").first<{ id: number }>();
   const rows = [
     { t: now - 10, code: 200, ok: 1 },

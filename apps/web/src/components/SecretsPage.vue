@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { api } from "../api";
 import { errorText, relative, shortDateTime } from "../format";
 import { t } from "../i18n";
+import { workspace } from "../store";
 import Icon from "./Icon.vue";
 
 interface Secret { name: string; note: string | null; created_at: number; updated_at: number }
@@ -105,10 +106,10 @@ const example = computed(() => {
 <template>
   <div class="hd">
     <div>
-      <span class="eyebrow">{{ t("Account") }}</span>
+      <span class="eyebrow">{{ workspace?.name }}</span>
       <h1 class="serif">{{ t("Secrets") }}</h1>
       <p class="muted" style="margin: 12px 0 0; font-size: 15px; max-width: 560px">
-        {{ t("Tokens and passwords your scripts need, kept out of the code. Every script job of this account gets them as environment variables.") }}
+        {{ t("Tokens and passwords your scripts need, kept out of the code. Every script job in this workspace gets them as environment variables.") }}
       </p>
     </div>
     <button type="button" class="btn primary" @click="startNew"><Icon name="plus" />{{ t("Add secret") }}</button>

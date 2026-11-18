@@ -28,7 +28,7 @@ const list = async (account: TestAccount) =>
 const job = (partial: Partial<JobRow>): JobRow => ({
   id: 9, name: "s", url: null, method: "GET", headers: null, body: null, cron: "0 12 * * *", enabled: 1,
   timeout_ms: 5000, next_run_at: 0, last_run_at: null, last_status: null, type: "script", runtime: "python",
-  script: "print('hi')", script_version: 3, owner_user_id: alice.userId, notify_targets: null, last_notified_at: null,
+  script: "print('hi')", script_version: 3, owner_user_id: alice.userId, organization_id: `ws_${alice.userId}`, project_id: null, notify_targets: null, last_notified_at: null,
   created_at: 0, updated_at: 0, ...partial,
 } as JobRow);
 

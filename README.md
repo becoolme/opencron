@@ -13,9 +13,11 @@ Scheduled HTTP calls and script jobs, with run history and failure alerts. Runs 
   [docs/deploy.md](docs/deploy.md#python-and-go-on-cloudflare).
 - **Alerts** go to Slack, Discord, Telegram, Lark, DingTalk or any HTTP endpoint (optionally HMAC-signed) when a run
   fails.
-- **Accounts** with email and password; every job and its storage belong to one user. `SIGNUP=closed` lets only the
-  first account sign up.
-- **Secrets** per account, passed to script jobs as environment variables and masked in run output.
+- **Accounts** with email and password. `SIGNUP=closed` lets only the first account, and people with an invitation,
+  sign up.
+- **Secrets** per workspace, passed to script jobs as environment variables and masked in run output.
+- **Workspaces, projects and members**: share jobs and secrets with a team, with owner, admin and member roles and
+  invitation links. See [docs/workspaces.md](docs/workspaces.md).
 - **API keys, REST API and MCP** for scripts, CI and AI assistants, read-only or read-write. See [docs/api.md](docs/api.md).
 - **Languages**: the site and the app are in English, 简体中文, 日本語 and 한국어.
 

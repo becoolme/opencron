@@ -46,6 +46,7 @@ const createJob = z.object({
   script: z.string().min(1).optional().describe("For type script: the source. JavaScript exports default { fetch(request, env) } and returns a Response; secrets arrive as env.NAME (Python os.environ, Go os.Getenv)."),
   runtime: runtime.optional().describe("For type script: the language. Defaults to javascript."),
   notify_targets: notifyTargets.optional(),
+  project_id: z.string().min(1).optional().describe("Project to create the job in, from list_projects. Defaults to the project argument, or to the only project there is."),
 });
 
 const updateJob = z.object({
@@ -61,11 +62,14 @@ const updateJob = z.object({
   script: z.string().min(1).optional().describe("Type script only: the new source."),
   runtime: runtime.optional().describe("Type script only."),
   notify_targets: notifyTargets.optional(),
+  project_id: z.string().min(1).optional().describe("Move the job to this project of the same workspace."),
 });
 
 export const TOOLS: Tool[] = [
+  { name: "list_workspaces", description: "List the workspaces this caller can use, with ids, names and the caller's role. Pass an id as the workspace argument of other tools; without it they use the current workspace (an API key always uses its own).", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/workspaces" }) },
+  { name: "list_projects", description: "List the projects of the workspace. Pass an id as the project argument to limit other tools to that project, or as project_id when creating a job.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/projects" }) },
   { name: "get_meta", description: "Read what this OpenCron deployment can run: the script runtimes it offers. Call it before creating a script job in a language other than JavaScript.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/meta" }) },
-  { name: "list_jobs", description: "List every job of this account with its id, type, schedule, enabled state, next run and last result. Use it to find a job id before reading or changing it.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/jobs" }) },
+  { name: "list_jobs", description: "List every job of the workspace (or of the project, when one is given) with its id, type, schedule, enabled state, next run and last result. Use it to find a job id before reading or changing it.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/jobs" }) },
   { name: "get_job", description: "Read one job's full configuration, including its script source or HTTP request and its alert targets.", schema: z.object({ id }), readOnly: true, build: ({ id }) => ({ method: "GET", path: `/api/jobs/${id}` }) },
   { name: "create_job", description: "Create a scheduled job and return it. A url job calls an HTTP endpoint on the schedule; a script job runs code (see get_meta for the languages). It starts on its schedule right away unless enabled is false. Needs a write API key.", schema: createJob, build: (args) => ({ method: "POST", path: "/api/jobs", body: args }) },
   { name: "update_job", description: "Change a job. Send its id and only the fields to change; the type cannot change. Use pause_job or resume_job to only switch it off or on. Needs a write API key.", schema: updateJob, idempotent: true, build: ({ id, ...rest }) => ({ method: "PATCH", path: `/api/jobs/${id}`, body: rest }) },
@@ -74,16 +78,26 @@ export const TOOLS: Tool[] = [
   { name: "run_job", description: "Run a job once now, outside its schedule, wait for it to finish and return the result (status, duration, response snippet or error). It does not move the next scheduled run. A failed run sends the job's alerts. Needs a write API key.", schema: z.object({ id }), openWorld: true, build: ({ id }) => ({ method: "POST", path: `/api/jobs/${id}/run` }) },
   { name: "delete_job", description: "Delete a job and all of its run history. This cannot be undone. Needs a write API key.", schema: z.object({ id }), destructive: true, idempotent: true, build: ({ id }) => ({ method: "DELETE", path: `/api/jobs/${id}` }) },
   { name: "list_job_executions", description: "Read the recent runs of one job, newest first, with status, timing, HTTP status, response snippet and error. Use it to find out why a job failed.", schema: z.object({ id, ...page }), readOnly: true, build: ({ id, ...rest }) => ({ method: "GET", path: `/api/jobs/${id}/executions${query(rest)}` }) },
-  { name: "list_executions", description: "Read the recent runs of all jobs of this account, newest first.", schema: z.object(page), readOnly: true, build: (args) => ({ method: "GET", path: `/api/executions${query(args)}` }) },
-  { name: "list_secrets", description: "List the names and notes of this account's secrets. Values are never returned.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/secrets" }) },
-  { name: "set_secret", description: "Create a secret or replace its value. Script jobs read it as an environment variable from their next run on. The value is stored encrypted and cannot be read back. Needs a write API key.", schema: z.object({ name: secretName, value: z.string().min(1).describe("The secret value."), note: z.string().max(200).optional().describe("What it is for, shown on the Secrets page.") }), idempotent: true, build: ({ name, ...rest }) => ({ method: "PUT", path: `/api/secrets/${name}`, body: rest }) },
-  { name: "delete_secret", description: "Delete a secret. Scripts that read it will no longer find it. Needs a write API key.", schema: z.object({ name: secretName }), destructive: true, idempotent: true, build: ({ name }) => ({ method: "DELETE", path: `/api/secrets/${name}` }) },
+  { name: "list_executions", description: "Read the recent runs of all jobs of the workspace (or of the project), newest first.", schema: z.object(page), readOnly: true, build: (args) => ({ method: "GET", path: `/api/executions${query(args)}` }) },
+  { name: "list_secrets", description: "List the names and notes of the workspace's secrets. Values are never returned.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/secrets" }) },
+  { name: "set_secret", description: "Create a secret or replace its value. Script jobs read it as an environment variable from their next run on. The value is stored encrypted and cannot be read back. Needs a write API key from a workspace owner or admin.", schema: z.object({ name: secretName, value: z.string().min(1).describe("The secret value."), note: z.string().max(200).optional().describe("What it is for, shown on the Secrets page.") }), idempotent: true, build: ({ name, ...rest }) => ({ method: "PUT", path: `/api/secrets/${name}`, body: rest }) },
+  { name: "delete_secret", description: "Delete a secret. Scripts that read it will no longer find it. Needs a write API key from a workspace owner or admin.", schema: z.object({ name: secretName }), destructive: true, idempotent: true, build: ({ name }) => ({ method: "DELETE", path: `/api/secrets/${name}` }) },
 ];
 
 export const mcpServer = createMcpServer({
   info: { name: "opencron", version: "1.0.0" },
-  instructions: "Manage scheduled jobs on OpenCron. Start with list_jobs to find job ids. Cron expressions are evaluated in UTC. A read API key can use only the read tools; changes need a write key.",
+  instructions: "Manage scheduled jobs on OpenCron. Start with list_workspaces and list_projects when the caller may use more than one, then list_jobs to find job ids. Cron expressions are evaluated in UTC. A read API key can use only the read tools; changes need a write key.",
   tools: TOOLS,
+  context: {
+    shape: {
+      workspace: z.string().min(1).optional().describe("Workspace id from list_workspaces. Omit to use the current workspace."),
+      project: z.string().min(1).optional().describe("Project id from list_projects, to limit the call to one project. Omit for all projects."),
+    },
+    toHeaders: ({ workspace, project }): Record<string, string> => ({
+      ...(typeof workspace === "string" ? { "x-workspace-id": workspace } : {}),
+      ...(typeof project === "string" ? { "x-project-id": project } : {}),
+    }),
+  },
 });
 
 /** Mounts POST /api/mcp on the outer app, before the session-protected /api group. */
@@ -93,5 +107,6 @@ export function mountOpenCronMcp(app: Hono<AppHonoEnv>): void {
     path: "/api/mcp",
     probePath: "/api/meta",
     credentialHeaders: ["authorization", "x-api-key", "cookie"],
+    contextHeaders: ["x-workspace-id", "x-project-id"],
   });
 }

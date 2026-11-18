@@ -23,6 +23,7 @@ const job: Job = {
   enabled: false,
   notify_targets: [{ type: "slack", url: "https://hooks.slack.com/services/a" }],
   last_notified_at: null,
+  project_id: "pj_1",
   last_status: null,
   last_run_at: null,
   next_run_at: 1_800_000_000,
@@ -94,6 +95,7 @@ describe("jobToForm", () => {
       enabled: false,
       timeout_ms: 10_000,
       notify_targets: job.notify_targets,
+      project_id: "pj_1",
     });
   });
 

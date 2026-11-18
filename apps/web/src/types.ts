@@ -25,6 +25,7 @@ export interface Job {
   enabled: boolean;
   notify_targets: NotifyTarget[] | null;
   last_notified_at: number | null;
+  project_id: string | null;
   last_status: "success" | "failed" | null;
   last_run_at: number | null;
   next_run_at: number;
@@ -63,6 +64,8 @@ export interface JobForm {
   enabled: boolean;
   notify_targets: NotifyTarget[];
   last_notified_at: number | null;
+  /** Empty until the workspace's projects are known. */
+  project_id: string;
 }
 
 export interface NotifyDraft {
@@ -77,4 +80,18 @@ export interface NotifyDraft {
 export interface HeaderRow {
   key: string;
   value: string;
+}
+
+export type WorkspaceRole = "owner" | "admin" | "member";
+
+export interface Workspace {
+  id: string;
+  name: string;
+  role: WorkspaceRole;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  created_at: number;
 }

@@ -66,7 +66,7 @@ export async function runScriptJob(env: Env, job: JobRow, ctx?: LoaderExecutionC
   try {
     if (!job.script) throw new Error("script is empty");
     const runtime = job.runtime ?? "javascript";
-    secrets = await secretsForRun(env, job.owner_user_id);
+    secrets = await secretsForRun(env, job.organization_id);
     if (runtime === "javascript" && env.LOADER) {
       // a changed secret gets a fresh isolate rather than one holding the old values
       const fingerprint = await secretsFingerprint(secrets);

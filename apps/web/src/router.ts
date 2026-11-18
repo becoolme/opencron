@@ -90,6 +90,8 @@ export const href = {
   get runs() { return app(lang.value, "/runs"); },
   get secrets() { return app(lang.value, "/secrets"); },
   get keys() { return app(lang.value, "/keys"); },
+  get members() { return app(lang.value, "/members"); },
+  get settings() { return app(lang.value, "/settings"); },
   get newJob() { return app(lang.value, "/jobs/new"); },
   job: (id: number) => app(lang.value, `/jobs/${id}`),
   edit: (id: number) => app(lang.value, `/jobs/${id}/edit`),

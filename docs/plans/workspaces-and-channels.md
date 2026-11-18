@@ -114,7 +114,7 @@ member 可以新建和编辑脚本任务。脚本能读到注入的密钥，所�
 - `GET/POST /api/workspaces`，切换走 Better Auth 的 `organization.setActive`。
 - `GET/POST/PATCH/DELETE /api/projects`。
 - `GET/POST/PATCH/DELETE /api/channels`，`POST /api/channels/:id/test`，`POST /api/channels/:id/apply-to-all`。
-- 成员与邀请走 Better Auth organization 端点，外加 `GET /api/members`。
+- 成员与邀请走自建端点：`/api/workspaces`、`/api/members`、`/api/invitations`、`/api/invite/:id`（实现时决定，未挂载 Better Auth organization 插件；表结构沿用它的 `organization`、`member`、`invitation`）。
 - 任务：新增 `project_id`、`channel_ids`；**`notify_targets` 直接移除**，不做兼容。请求里带 `notify_targets` 时返回 400，错误信息指向 `channel_ids` 和 `/api/channels`，避免客户端以为设置成功却收不到告警。返回体里不再有该字段。
 - MCP：新增 `list_workspaces`、`list_projects`、`list_channels`；任务工具支持 `workspace` / `project` 选择，`notify_targets` 参数换成 `channel_ids`。
 - 这是破坏性变更：changelog 的 `upgrade` 写明 API/MCP 客户端要改用 `channel_ids`，文档给出前后对照示例。

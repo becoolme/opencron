@@ -5,6 +5,7 @@ import type { MiddlewareHandler } from "hono";
 import { signUpMode } from "./sign-up";
 import { presentedApiKey, verifyApiKey } from "./api-keys";
 import type { AppHonoEnv, Env } from "./types";
+import { createPersonalWorkspace } from "./workspace";
 
 /** The host of APP_URL (where this deployment is served), which sign-in requests may come from besides localhost. */
 function appHosts(env: Env): string[] {
@@ -16,9 +17,19 @@ function appHosts(env: Env): string[] {
   }
 }
 
-export async function signUpAllowed(env: Env): Promise<boolean> {
+/**
+ * Whether a new account may be created. With SIGNUP=closed only the first account can sign up, plus anyone holding a
+ * pending, unexpired invitation for their email address.
+ */
+export async function signUpAllowed(env: Env, holder: { email?: string; invitationId?: string } = {}): Promise<boolean> {
   if (signUpMode(env) === "open") return true;
-  return !(await getDatabase(env).prepare('SELECT 1 AS one FROM "user" LIMIT 1').first());
+  const db = getDatabase(env);
+  if (!(await db.prepare('SELECT 1 AS one FROM "user" LIMIT 1').first())) return true;
+  const [column, value] = holder.email ? ["lower(email)", holder.email.toLowerCase()] : ["id", holder.invitationId];
+  if (!value) return false;
+  return Boolean(await db.prepare(
+    `SELECT 1 AS one FROM invitation WHERE ${column} = ? AND status = 'pending' AND "expiresAt" > ?`,
+  ).bind(value, new Date().toISOString()).first());
 }
 
 export function createAuth(env: Env) {
@@ -39,19 +50,31 @@ export function createAuth(env: Env) {
     databaseHooks: {
       user: {
         create: {
-          before: async () => {
-            if (!(await signUpAllowed(env))) {
+          before: async (user) => {
+            if (!(await signUpAllowed(env, { email: user.email }))) {
               throw new APIError("FORBIDDEN", { message: "Sign-up is closed on this deployment" });
             }
           },
           after: async (user) => {
-            // Preserve pre-authentication jobs by assigning them to the first
-            // user created after this migration.
-            await db.prepare(
-              "UPDATE jobs SET owner_user_id = ? WHERE owner_user_id IS NULL",
-            ).bind(user.id).run();
+            // every account starts with a personal workspace; jobs from before accounts existed move into the first
+            await createPersonalWorkspace(env, user);
           },
         },
+      },
+      session: {
+        create: {
+          before: async (session) => {
+            const first = await db.prepare(
+              `SELECT "organizationId" AS id FROM member WHERE "userId" = ? ORDER BY "createdAt", id LIMIT 1`,
+            ).bind(session.userId).first<{ id: string }>();
+            return { data: { ...session, activeOrganizationId: first?.id ?? null } };
+          },
+        },
+      },
+    },
+    session: {
+      additionalFields: {
+        activeOrganizationId: { type: "string", required: false, input: false },
       },
     },
     telemetry: {
@@ -83,6 +106,8 @@ export const sessionAuthMiddleware: MiddlewareHandler<AppHonoEnv> = async (c, ne
     c.set("userEmail", user.email);
     c.set("authMethod", "api_key");
     c.set("apiKeyScope", user.scope);
+    if (user.workspaceId) c.set("apiKeyWorkspaceId", user.workspaceId);
+    c.set("apiKeyProjectIds", user.projectIds);
     return next();
   }
 
@@ -100,5 +125,6 @@ export const sessionAuthMiddleware: MiddlewareHandler<AppHonoEnv> = async (c, ne
   c.set("userName", session.user.name);
   c.set("userEmail", session.user.email);
   c.set("authMethod", "session");
+  c.set("sessionId", session.session.id);
   await next();
 };

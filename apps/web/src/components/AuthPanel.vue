@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { authClient } from "../auth-client";
-import { authPath } from "../auth-routes";
+import { authPath, returnDestination } from "../auth-routes";
+import { parse } from "../routes";
 import { currentPath, replace, route } from "../router";
-import { t } from "../i18n";
+import { splitPath, t } from "../i18n";
 import LangSwitch from "./LangSwitch.vue";
 import HeaderArt from "./HeaderArt.vue";
 
@@ -22,9 +23,16 @@ const signUpPath = computed(() => authPath(currentPath.value, "sign-up"));
 // the deployment may allow only its first account (SIGNUP=closed); offer sign-up only when it would work
 const signUpOpen = ref(true);
 
+/** The invitation someone followed here, which may let them sign up even when sign-up is otherwise closed. */
+function invitationId(): string | null {
+  const next = parse(splitPath(new URL(returnDestination(currentPath.value), location.origin).pathname).rest);
+  return next.name === "invite" ? next.id : null;
+}
+
 onMounted(async () => {
   try {
-    const res = await fetch("/api/instance", { credentials: "same-origin" });
+    const invite = invitationId();
+    const res = await fetch(invite ? `/api/instance?invite=${encodeURIComponent(invite)}` : "/api/instance", { credentials: "same-origin" });
     if (res.ok) signUpOpen.value = ((await res.json()) as { sign_up?: boolean }).sign_up !== false;
   } catch {
     // keep offering sign-up; the server refuses it if it is closed
