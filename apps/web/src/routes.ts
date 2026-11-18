@@ -1,4 +1,6 @@
 export type Route =
+  | { name: "sign-in" }
+  | { name: "sign-up" }
   | { name: "jobs" }
   | { name: "runs" }
   | { name: "secrets" }
@@ -20,6 +22,8 @@ export function inApp(path: string): boolean {
 export function parse(path: string): Route {
   const inside = inApp(path) ? path.slice(APP_BASE.length) : path;
   const clean = inside.replace(/\/+$/, "") || "/";
+  if (clean === "/sign-in") return { name: "sign-in" };
+  if (clean === "/sign-up") return { name: "sign-up" };
   if (clean === "/runs") return { name: "runs" };
   if (clean === "/secrets") return { name: "secrets" };
   if (clean === "/keys") return { name: "keys" };

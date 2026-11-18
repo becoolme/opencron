@@ -47,8 +47,8 @@ const join = (a: string) => (/[\u2e80-\u9fff\uff00-\uffef]$/.test(a) ? a : `${a}
           <a href="#features">{c.nav.features}</a><a href="#agent">{c.nav.mcp}</a><a href={docs("deploy.md")}>{c.nav.docs}</a><a href={REPO}>{c.nav.github}</a>
         </nav>
         <div class="top-cta">
-          <a href={app} class="login">{c.nav.login}</a>
-          <a class="btn primary sm" href={app}>{c.nav.start}</a>
+          <a href={`${app}/sign-in`} class="login">{c.nav.login}</a>
+          <a class="btn primary sm" href={`${app}/sign-up`}>{c.nav.start}</a>
         </div>
       </div>
     </header>

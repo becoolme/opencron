@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { authClient } from "./auth-client";
+import { authRedirect, isAuthRoute } from "./auth-routes";
 import AppShell from "./components/AppShell.vue";
 import AuthPanel from "./components/AuthPanel.vue";
 import JobDetail from "./components/JobDetail.vue";
@@ -11,12 +12,18 @@ import SecretsPage from "./components/SecretsPage.vue";
 import KeysPage from "./components/KeysPage.vue";
 import { UNAUTHORIZED_EVENT } from "./api";
 import { t } from "./i18n";
-import { href, route } from "./router";
+import { currentPath, href, replace, route } from "./router";
 import { jobsById, loadError, loadMeta, loaded, refresh, reset } from "./store";
 
 const sessionState = authClient.useSession();
 const session = computed(() => sessionState.value.data);
 const sessionPending = computed(() => sessionState.value.isPending);
+
+watch([sessionPending, session, currentPath], () => {
+  if (sessionPending.value) return;
+  const destination = authRedirect(currentPath.value, !!session.value);
+  if (destination) replace(destination);
+}, { immediate: true });
 
 watch(
   () => session.value?.user.id,
@@ -62,6 +69,8 @@ const crumbs = computed(() => {
   const jobs = { label: t("Cron jobs"), href: href.jobs };
   const r = route.value;
   switch (r.name) {
+    case "sign-in": return [{ label: t("Sign in") }];
+    case "sign-up": return [{ label: t("Sign up") }];
     case "runs": return [{ label: t("Runs") }];
     case "secrets": return [{ label: t("Secrets") }];
     case "keys": return [{ label: t("API & MCP") }];
@@ -88,7 +97,7 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <main v-if="sessionPending" class="boot muted">{{ t("Loading OpenCron…") }}</main>
+  <main v-if="sessionPending || (!!session && isAuthRoute(route.name))" class="boot muted">{{ t("Loading OpenCron…") }}</main>
 
   <AuthPanel v-else-if="!session" @authenticated="sessionState.refetch()" />
 
