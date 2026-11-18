@@ -66,7 +66,7 @@ server and gives it an HTTPS hostname.
 
 The job editor now offers Python and Go, and `GET /api/meta` lists all three runtimes.
 
-Every Python or Go run carries the script and the account's secrets to the sandbox, so `SANDBOX_URL` must be HTTPS
+Every Python or Go run carries the script and the workspace's secrets to the sandbox, so `SANDBOX_URL` must be HTTPS
 (plain HTTP is accepted only for localhost, a Compose service name or a private IPv4 address), and `SANDBOX_TOKEN` must
 be at least 16 random characters. Anyone who has the token and can reach the hostname can run code on your server. To
 add a second lock, protect the hostname with a [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/)
@@ -86,7 +86,7 @@ Things to know:
 - The sandbox runs `SANDBOX_CONCURRENCY` scripts at a time (4 by default) and queues the rest. Size the server for the
   Python and Go jobs that fall due in the same minute.
 - The table store, D1 facade and KV namespace of [scripts.md](scripts.md) stay JavaScript only; Python and Go scripts
-  get the account's secrets and the run context, as on Docker.
+  get the workspace's secrets and the run context, as on Docker.
 - If the sandbox is down, Python and Go runs fail with the error in the run history and alert as usual; JavaScript and
   HTTP jobs are not affected.
 - Accounts on your deployment can run code on that server. Keep `SIGNUP = "closed"` unless you trust everyone who can
@@ -98,7 +98,7 @@ Things to know:
 | --- | --- | --- |
 | `APP_URL` | `http://localhost:5173` | Public URL of the deployment. Sign-in is accepted from its host and from localhost. The web build uses it for canonical links, `robots.txt` and the sitemap. |
 | `ALLOW_PRIVATE_TARGETS` | `false` | `true` lets HTTP jobs and alert webhooks call private or internal addresses. |
-| `SIGNUP` | `open` | `closed` lets only the first account sign up; later sign-ups are refused. The Docker setup defaults to `closed`. |
+| `SIGNUP` | `open` | `closed` lets only the first account sign up; later sign-ups are refused unless the address has an open workspace invitation. The Docker setup defaults to `closed`. |
 | `SANDBOX_URL` | (none) | Optional. HTTPS address of a script sandbox for Python and Go jobs; see [above](#python-and-go-on-cloudflare). |
 | `SANDBOX_TOKEN` | (secret) | Required with `SANDBOX_URL`: the shared token the sandbox checks, at least 16 random characters. |
 | `SANDBOX_ACCESS_CLIENT_ID`, `SANDBOX_ACCESS_CLIENT_SECRET` | (secrets) | Optional. A Cloudflare Access service token, sent to a sandbox behind Access. Set both or neither. |

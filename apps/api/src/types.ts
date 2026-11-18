@@ -32,6 +32,8 @@ export interface Env {
   SIGNUP?: string;
 }
 
+export type WorkspaceRole = "owner" | "admin" | "member";
+
 export type AppHonoEnv = {
   Bindings: Env;
   Variables: {
@@ -42,6 +44,18 @@ export type AppHonoEnv = {
     authMethod: "session" | "api_key";
     /** The key's scope when authMethod is api_key. */
     apiKeyScope?: "read" | "write";
+    /** The browser session's id when authMethod is session. */
+    sessionId?: string;
+    /** For an API key: the workspace it belongs to and the projects it is limited to (null = all). */
+    apiKeyWorkspaceId?: string;
+    apiKeyProjectIds?: string[] | null;
+    /** Set by workspaceMiddleware: the workspace of this request and the caller's role in it. */
+    workspaceId: string;
+    workspaceRole: WorkspaceRole;
+    /** The project chosen with x-project-id, or null for the workspace-wide "all projects" view. */
+    projectId: string | null;
+    /** Projects this request may see: null when every project of the workspace is visible. */
+    visibleProjectIds: string[] | null;
   };
 };
 
@@ -67,6 +81,8 @@ export interface JobRow {
   created_at: number;
   updated_at: number;
   owner_user_id: string | null;
+  organization_id: string | null;
+  project_id: string | null;
 }
 
 export interface JobDto {
@@ -88,6 +104,7 @@ export interface JobDto {
   runtime: ScriptRuntime;
   notify_targets: NotifyTarget[] | null;
   last_notified_at: number | null;
+  project_id: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -135,6 +152,7 @@ export function jobRowToDto(row: JobRow): JobDto {
       catch { console.error(`[jobs] job ${row.id}: invalid notify_targets JSON`); return null; }
     })(),
     last_notified_at: row.last_notified_at,
+    project_id: row.project_id ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

@@ -5,6 +5,9 @@ export type Route =
   | { name: "runs" }
   | { name: "secrets" }
   | { name: "keys" }
+  | { name: "members" }
+  | { name: "settings" }
+  | { name: "invite"; id: string }
   | { name: "new" }
   | { name: "job"; id: number }
   | { name: "edit"; id: number }
@@ -27,6 +30,10 @@ export function parse(path: string): Route {
   if (clean === "/runs") return { name: "runs" };
   if (clean === "/secrets") return { name: "secrets" };
   if (clean === "/keys") return { name: "keys" };
+  if (clean === "/members") return { name: "members" };
+  if (clean === "/settings") return { name: "settings" };
+  const invite = clean.match(/^\/invite\/([\w-]{1,100})$/);
+  if (invite) return { name: "invite", id: invite[1] };
   if (clean === "/jobs/new") return { name: "new" };
   const edit = clean.match(/^\/jobs\/(\d+)\/edit$/);
   if (edit) return { name: "edit", id: Number(edit[1]) };

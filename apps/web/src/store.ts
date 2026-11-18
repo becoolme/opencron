@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
-import { api } from "./api";
+import { api, scope } from "./api";
 import { errorText } from "./format";
-import type { Execution, ExecutionWire, Job, ScriptRuntime } from "./types";
+import type { Execution, ExecutionWire, Job, Project, ScriptRuntime, Workspace } from "./types";
 
 export const RECENT_LIMIT = 200;
 
@@ -10,6 +10,24 @@ export const recent = ref<Execution[]>([]);
 export const runtimes = ref<ScriptRuntime[]>(["javascript"]);
 export const loaded = ref(false);
 export const loadError = ref("");
+
+/** The workspaces this account belongs to, and the one the app is showing. */
+export const workspaces = ref<Workspace[]>([]);
+export const workspaceId = ref<string | null>(null);
+export const workspace = computed(() => workspaces.value.find((item) => item.id === workspaceId.value) ?? null);
+/** Owners and admins manage members, projects and keys; members work with jobs and secrets. */
+export const canManage = computed(() => workspace.value?.role === "owner" || workspace.value?.role === "admin");
+
+/** The projects of the current workspace, and the one the job list is narrowed to (`all` for every project). */
+export const projects = ref<Project[]>([]);
+export const projectFilter = ref("all");
+export const projectsById = computed(() => new Map(projects.value.map((project) => [project.id, project])));
+
+const projectKey = (id: string) => `opencron:project:${id}`;
+
+function rememberedProject(id: string): string {
+  try { return localStorage.getItem(projectKey(id)) ?? "all"; } catch { return "all"; }
+}
 
 export const jobsById = computed(() => new Map(jobs.value.map((job) => [job.id, job])));
 
@@ -32,16 +50,76 @@ export async function fetchExecutions(path: string, limit: number, before?: numb
   return executions.map((e) => ({ ...e, ok: Boolean(e.ok) }));
 }
 
+/** Loads the project list of the current workspace and restores the project this browser last looked at. */
+export async function loadProjects(): Promise<void> {
+  const chosen = scope.project;
+  scope.project = null;
+  try {
+    projects.value = (await api<{ projects: Project[] }>("/projects")).projects;
+  } finally {
+    scope.project = chosen;
+  }
+  const wanted = workspaceId.value ? rememberedProject(workspaceId.value) : "all";
+  projectFilter.value = projectsById.value.has(wanted) ? wanted : "all";
+  scope.project = projectFilter.value === "all" ? null : projectFilter.value;
+}
+
+/** Asks the API which workspace this session is in (it picks one when the saved one is gone). */
+export async function loadWorkspace(): Promise<void> {
+  scope.workspace = null;
+  scope.project = null;
+  const result = await api<{ workspaces: Workspace[]; current: string }>("/workspaces");
+  workspaces.value = result.workspaces;
+  workspaceId.value = result.current;
+  scope.workspace = result.current;
+  await loadProjects();
+}
+
+/** Loads the workspace, then its jobs and runs. */
+export async function boot(): Promise<void> {
+  try {
+    await loadWorkspace();
+  } catch (caught) {
+    loadError.value = errorText(caught);
+    loaded.value = true;
+    return;
+  }
+  await refresh();
+}
+
+export async function switchWorkspace(id: string): Promise<void> {
+  await api(`/workspaces/${encodeURIComponent(id)}/activate`, { method: "POST" });
+  reset();
+  await boot();
+}
+
+export function setProject(id: string): void {
+  projectFilter.value = id;
+  scope.project = id === "all" ? null : id;
+  try {
+    if (workspaceId.value) localStorage.setItem(projectKey(workspaceId.value), id);
+  } catch {
+    // private windows may refuse storage; the choice lasts for this page only
+  }
+  void refresh();
+}
+
 export async function refresh(): Promise<void> {
+  if (!scope.workspace) return;
+  const asked = `${scope.workspace}/${scope.project}`;
   try {
     const [jobsResponse, executionsResponse] = await Promise.all([
       api<{ jobs: Job[] }>("/jobs"),
       fetchExecutions("/executions", RECENT_LIMIT),
     ]);
+    // A switch while this was loading makes the answer stale.
+    if (asked !== `${scope.workspace}/${scope.project}`) return;
     jobs.value = jobsResponse.jobs;
     recent.value = executionsResponse;
     loadError.value = "";
   } catch (caught) {
+    // Removed from this workspace, or it was deleted, while the page was open: go to another one.
+    if (caught instanceof Error && caught.message === "Workspace not found" && scope.workspace) return boot();
     loadError.value = errorText(caught);
   } finally {
     loaded.value = true;
@@ -58,6 +136,12 @@ export async function loadMeta(): Promise<void> {
 }
 
 export function reset(): void {
+  scope.workspace = null;
+  scope.project = null;
+  workspaces.value = [];
+  workspaceId.value = null;
+  projects.value = [];
+  projectFilter.value = "all";
   jobs.value = [];
   recent.value = [];
   loaded.value = false;

@@ -5,7 +5,7 @@ import { t } from "../i18n";
 import { clock, dayLabel, describeCron, errorText, nextRuns, relative } from "../format";
 import { emptyForm, formToPayload, isTemplate, jobToForm, methodHasBody, METHODS, TEMPLATES, validateForm, type FormErrors } from "../job-form";
 import { go, guardLeave, href } from "../router";
-import { jobsById, refresh, runtimes } from "../store";
+import { jobsById, projectFilter, projects, refresh, runtimes } from "../store";
 import type { Job, JobForm, JobType, ScriptRuntime } from "../types";
 import Icon from "./Icon.vue";
 import NotifyEditor from "./NotifyEditor.vue";
@@ -32,6 +32,8 @@ const stopLoading = watch(
     if (editing.value && !job) return;
     queueMicrotask(() => stopLoading());
     form.value = job ? jobToForm(job) : emptyForm();
+    // A new job goes into the project the list is showing, else the first one.
+    if (!form.value.project_id) form.value.project_id = projectFilter.value !== "all" ? projectFilter.value : projects.value[0]?.id ?? "";
     initial.value = JSON.stringify(form.value);
     submitted.value = false;
     errors.value = {};
@@ -190,6 +192,12 @@ onBeforeUnmount(() => {
             <input id="f-name" v-model="form.name" class="in" :class="{ bad: errors.name }" maxlength="200" :placeholder="t('Nightly backup')" :aria-invalid="!!errors.name" :aria-describedby="errors.name ? 'e-name' : undefined" />
             <small v-if="errors.name" id="e-name" class="err">{{ errors.name }}</small>
           </label>
+          <label v-if="projects.length > 1" class="fld">
+            <span>{{ t("Project") }}</span>
+            <select v-model="form.project_id" class="in">
+              <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
+            </select>
+          </label>
         </section>
 
         <section v-if="form.type === 'url'" class="sect">
@@ -252,6 +260,7 @@ onBeforeUnmount(() => {
             <CodeEditor v-model="form.script" :language="form.runtime" :label="t('Script source')" />
           </div>
           <p v-if="errors.script" id="e-script" class="err-note" role="alert">{{ errors.script }}</p>
+          <small class="faint">{{ t("Scripts can read this workspace's secrets, so everyone who can edit jobs here can see them.") }}</small>
           <p v-if="!runtimes.includes(form.runtime)" class="alert" style="margin: 0">
             {{ t("This deployment can't run {runtime}. Switch to JavaScript, or give the deployment a script sandbox.", { runtime: RUNTIME_LABEL[form.runtime] }) }}
           </p>

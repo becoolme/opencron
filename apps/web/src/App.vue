@@ -10,10 +10,13 @@ import JobsList from "./components/JobsList.vue";
 import RunsPage from "./components/RunsPage.vue";
 import SecretsPage from "./components/SecretsPage.vue";
 import KeysPage from "./components/KeysPage.vue";
+import InvitePage from "./components/InvitePage.vue";
+import MembersPage from "./components/MembersPage.vue";
+import SettingsPage from "./components/SettingsPage.vue";
 import { UNAUTHORIZED_EVENT } from "./api";
 import { t } from "./i18n";
 import { currentPath, href, replace, route } from "./router";
-import { jobsById, loadError, loadMeta, loaded, refresh, reset } from "./store";
+import { boot, jobsById, loadError, loadMeta, loaded, refresh, reset, workspace } from "./store";
 
 const sessionState = authClient.useSession();
 const session = computed(() => sessionState.value.data);
@@ -29,7 +32,7 @@ watch(
   () => session.value?.user.id,
   async (userId) => {
     reset();
-    if (userId) await Promise.all([refresh(), loadMeta()]);
+    if (userId) await Promise.all([boot(), loadMeta()]);
   },
   { immediate: true },
 );
@@ -74,6 +77,9 @@ const crumbs = computed(() => {
     case "runs": return [{ label: t("Runs") }];
     case "secrets": return [{ label: t("Secrets") }];
     case "keys": return [{ label: t("API & MCP") }];
+    case "members": return [{ label: t("Members") }];
+    case "settings": return [{ label: t("Workspace settings") }];
+    case "invite": return [{ label: t("Invitation") }];
     case "new": return [jobs, { label: t("New job") }];
     case "job": return [jobs, { label: jobsById.value.get(r.id)?.name ?? `#${r.id}` }];
     case "edit": return [jobs, { label: jobsById.value.get(r.id)?.name ?? `#${r.id}`, href: href.job(r.id) }, { label: t("Edit") }];
@@ -101,18 +107,21 @@ async function signOut(): Promise<void> {
 
   <AuthPanel v-else-if="!session" @authenticated="sessionState.refetch()" />
 
-  <AppShell v-else :user="session.user" :crumbs="crumbs" @sign-out="signOut">
+  <AppShell v-else :user="session.user" :crumbs="crumbs" @sign-out="signOut" @toast="showToast">
     <p v-if="loadError && loaded" class="alert" role="alert">
       {{ t("Couldn't load your jobs:") }} {{ loadError }}
-      <button type="button" class="btn sm" style="margin-left: 8px" @click="refresh()">{{ t("Retry") }}</button>
+      <button type="button" class="btn sm" style="margin-left: 8px" @click="workspace ? refresh() : boot()">{{ t("Retry") }}</button>
     </p>
 
     <p v-if="!loaded" class="muted" style="padding: 40px 0">{{ t("Loading…") }}</p>
     <template v-else>
       <JobsList v-if="route.name === 'jobs'" />
       <RunsPage v-else-if="route.name === 'runs'" />
-      <SecretsPage v-else-if="route.name === 'secrets'" @toast="showToast" />
-      <KeysPage v-else-if="route.name === 'keys'" @toast="showToast" />
+      <SecretsPage v-else-if="route.name === 'secrets'" :key="`secrets-${workspace?.id}`" @toast="showToast" />
+      <KeysPage v-else-if="route.name === 'keys'" :key="`keys-${workspace?.id}`" @toast="showToast" />
+      <MembersPage v-else-if="route.name === 'members'" :key="`members-${workspace?.id}`" :user-id="session.user.id" @toast="showToast" />
+      <SettingsPage v-else-if="route.name === 'settings'" :key="`settings-${workspace?.id}`" :user-id="session.user.id" @toast="showToast" />
+      <InvitePage v-else-if="route.name === 'invite'" :id="route.id" :key="`invite-${route.id}`" :email="session.user.email" @toast="showToast" @sign-out="signOut" />
       <JobEditor v-else-if="route.name === 'new'" key="new" @toast="showToast" />
       <JobEditor v-else-if="route.name === 'edit'" :key="`edit-${route.id}`" :id="route.id" @toast="showToast" />
       <JobDetail v-else-if="route.name === 'job'" :id="route.id" @toast="showToast" />

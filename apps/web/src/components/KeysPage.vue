@@ -3,10 +3,14 @@ import { computed, onMounted, ref } from "vue";
 import { api } from "../api";
 import { errorText, relative, shortDateTime } from "../format";
 import { t } from "../i18n";
+import { projects, projectsById, workspace } from "../store";
 import Icon from "./Icon.vue";
 
 type Scope = "read" | "write";
-interface ApiKey { id: string; name: string; prefix: string; scope: Scope; created_at: number; last_used_at: number | null }
+interface ApiKey {
+  id: string; name: string; prefix: string; scope: Scope; project_ids: string[] | null; created_by: string | null;
+  created_at: number; last_used_at: number | null;
+}
 
 const emit = defineEmits<{ toast: [text: string, kind?: "ok" | "fail" | "info"] }>();
 
@@ -17,6 +21,8 @@ const error = ref("");
 const open = ref(false);
 const name = ref("");
 const scope = ref<Scope>("read");
+// empty: every project, including ones added later
+const limitTo = ref<string[]>([]);
 const saving = ref(false);
 const formError = ref("");
 // the key just created, shown once
@@ -37,6 +43,7 @@ onMounted(load);
 function startNew(): void {
   name.value = "";
   scope.value = "read";
+  limitTo.value = [];
   formError.value = "";
   created.value = null;
   open.value = true;
@@ -49,7 +56,7 @@ async function create(): Promise<void> {
   try {
     const result = await api<{ key: ApiKey; token: string }>("/keys", {
       method: "POST",
-      body: JSON.stringify({ name: name.value.trim(), scope: scope.value }),
+      body: JSON.stringify({ name: name.value.trim(), scope: scope.value, project_ids: limitTo.value.length ? limitTo.value : null }),
     });
     created.value = { name: result.key.name, token: result.token };
     open.value = false;
@@ -81,6 +88,11 @@ async function copy(text: string): Promise<void> {
   }
 }
 
+function projectNames(key: ApiKey): string {
+  if (!key.project_ids) return t("All projects");
+  return key.project_ids.map((id) => projectsById.value.get(id)?.name ?? id).join(", ");
+}
+
 const origin = window.location.origin;
 const mcpUrl = `${origin}/api/mcp`;
 const shownKey = computed(() => created.value?.token ?? "oc_…");
@@ -96,10 +108,10 @@ const docsUrl = "https://github.com/becoolme/opencron/blob/main/docs/api.md";
 <template>
   <div class="hd">
     <div>
-      <span class="eyebrow">{{ t("Account") }}</span>
+      <span class="eyebrow">{{ workspace?.name }}</span>
       <h1 class="serif">{{ t("API & MCP") }}</h1>
       <p class="muted" style="margin: 12px 0 0; font-size: 15px; max-width: 560px">
-        {{ t("Keys let scripts, CI and AI assistants manage this account's jobs and secrets without your password.") }}
+        {{ t("Keys let scripts, CI and AI assistants manage this workspace's jobs and secrets without your password.") }}
       </p>
     </div>
     <button type="button" class="btn primary" @click="startNew"><Icon name="plus" />{{ t("Create API key") }}</button>
@@ -135,6 +147,13 @@ const docsUrl = "https://github.com/becoolme/opencron/blob/main/docs/api.md";
           ? t("Can list jobs, runs and secret names. Cannot change anything.")
           : t("Can also create, change, run and delete jobs, and set secrets.") }}</small>
       </div>
+      <fieldset v-if="projects.length > 1" class="fld projs">
+        <legend>{{ t("Projects") }}</legend>
+        <label v-for="project in projects" :key="project.id" class="check">
+          <input v-model="limitTo" type="checkbox" :value="project.id" />{{ project.name }}
+        </label>
+        <small>{{ limitTo.length ? t("The key sees only the jobs in the projects you tick.") : t("No project ticked: the key works in every project, including ones added later.") }}</small>
+      </fieldset>
       <p v-if="formError" class="alert" role="alert" style="margin: 0">{{ formError }}</p>
       <div style="display: flex; gap: 8px">
         <button type="submit" class="btn primary" :disabled="saving">{{ saving ? t("Creating…") : t("Create key") }}</button>
@@ -147,7 +166,10 @@ const docsUrl = "https://github.com/becoolme/opencron/blob/main/docs/api.md";
     <div class="list">
       <div class="krow th"><span>{{ t("Name") }}</span><span>{{ t("Key") }}</span><span>{{ t("Access") }}</span><span>{{ t("Last used") }}</span><span /></div>
       <div v-for="key in keys" :key="key.id" class="krow">
-        <span class="ellipsis" style="font-weight: 500">{{ key.name }}</span>
+        <span class="who">
+          <b class="ellipsis">{{ key.name }}</b>
+          <small v-if="projects.length > 1 || key.project_ids" class="faint ellipsis">{{ projectNames(key) }}</small>
+        </span>
         <span class="mono faint">{{ key.prefix }}…</span>
         <span><span class="chip">{{ key.scope === "write" ? t("Read and write") : t("Read only") }}</span></span>
         <span class="mono faint" :title="key.last_used_at ? shortDateTime(key.last_used_at) : ''">{{ key.last_used_at ? relative(key.last_used_at) : t("Never") }}</span>
@@ -195,6 +217,11 @@ const docsUrl = "https://github.com/becoolme/opencron/blob/main/docs/api.md";
 .krow.th { min-height: 36px; border-top: 0; }
 .krow > span { min-width: 0; }
 .acts { display: flex; justify-content: flex-end; }
+.who { display: grid; line-height: 1.3; }
+.who b { font-weight: 500; }
+.projs { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.projs legend { padding: 0; margin-bottom: 6px; }
+.check { display: flex; gap: 8px; align-items: center; font-weight: 400; }
 .empty { margin: 0; padding: 24px 0 16px; font-size: 14px; }
 .token { display: flex; gap: 10px; align-items: center; padding: 10px 12px 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .token code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13.5px; }

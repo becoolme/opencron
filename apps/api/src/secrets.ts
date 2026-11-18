@@ -2,15 +2,16 @@ import { getDatabase } from "./database";
 import type { Env } from "./types";
 
 /**
- * Per-account secrets: values a script reads from its environment (env.NAME in JavaScript, os.environ in Python,
+ * Workspace secrets: values a script reads from its environment (env.NAME in JavaScript, os.environ in Python,
  * os.Getenv in Go) instead of keeping them in its source. Values are stored encrypted with AES-GCM under a key derived
- * from BETTER_AUTH_SECRET, bound to the owner and name, and the API never returns them.
+ * from BETTER_AUTH_SECRET, bound to the account that saved them (owner_user_id) and the name, and the API never returns
+ * them.
  */
 
 export const SECRET_NAME = /^[A-Z_][A-Z0-9_]{0,63}$/;
 export const MAX_SECRETS = 50;
 export const MAX_SECRET_BYTES = 16 * 1024;
-/** All of an account's values together; they travel to the sandbox and into each container's environment. */
+/** All of a workspace's values together; they travel to the sandbox and into each container's environment. */
 export const MAX_TOTAL_SECRET_BYTES = 64 * 1024;
 export const MAX_NOTE_LENGTH = 200;
 
@@ -95,6 +96,7 @@ export async function decryptSecret(env: Pick<Env, "BETTER_AUTH_SECRET">, owner:
 
 export interface SecretRow {
   id: number;
+  organization_id: string;
   owner_user_id: string;
   name: string;
   value: string;
@@ -110,26 +112,26 @@ export interface SecretDto {
   updated_at: number;
 }
 
-export async function listSecrets(env: Env, owner: string): Promise<SecretDto[]> {
+export async function listSecrets(env: Env, workspaceId: string): Promise<SecretDto[]> {
   const { results } = await getDatabase(env).prepare(
-    "SELECT name, note, created_at, updated_at FROM secrets WHERE owner_user_id = ? ORDER BY name",
-  ).bind(owner).all<SecretDto>();
-  return results;
+    "SELECT name, note, created_at, updated_at FROM secrets WHERE organization_id = ? ORDER BY name",
+  ).bind(workspaceId).all<SecretDto>();
+  return results.map((row) => ({ ...row, created_at: Number(row.created_at), updated_at: Number(row.updated_at) }));
 }
 
 /**
- * Decrypts every secret of an account for a run. Throws when one cannot be read, which happens after
+ * Decrypts every secret of a workspace for a run. Throws when one cannot be read, which happens after
  * BETTER_AUTH_SECRET changed: the run fails with a message saying which secret to save again.
  */
-export async function secretsForRun(env: Env, owner: string | null): Promise<Record<string, string>> {
-  if (!owner) return {};
+export async function secretsForRun(env: Env, workspaceId: string | null): Promise<Record<string, string>> {
+  if (!workspaceId) return {};
   const { results } = await getDatabase(env).prepare(
-    "SELECT name, value FROM secrets WHERE owner_user_id = ? ORDER BY name",
-  ).bind(owner).all<Pick<SecretRow, "name" | "value">>();
+    "SELECT owner_user_id, name, value FROM secrets WHERE organization_id = ? ORDER BY name",
+  ).bind(workspaceId).all<Pick<SecretRow, "owner_user_id" | "name" | "value">>();
   const values: Record<string, string> = {};
   for (const row of results) {
     try {
-      values[row.name] = await decryptSecret(env, owner, row.name, row.value);
+      values[row.name] = await decryptSecret(env, row.owner_user_id, row.name, row.value);
     } catch {
       throw new Error(`Secret ${row.name} cannot be decrypted (was BETTER_AUTH_SECRET changed?). Save it again on the Secrets page.`);
     }

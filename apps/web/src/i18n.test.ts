@@ -34,6 +34,10 @@ describe("language paths", () => {
     expect(parse("/runs/")).toEqual({ name: "runs" });
     expect(parse("/secrets")).toEqual({ name: "secrets" });
     expect(parse("/keys")).toEqual({ name: "keys" });
+    expect(parse("/app/members")).toEqual({ name: "members" });
+    expect(parse("/app/settings")).toEqual({ name: "settings" });
+    expect(parse(splitPath("/ja/app/invite/3f2a-b1").rest)).toEqual({ name: "invite", id: "3f2a-b1" });
+    expect(parse("/app/invite/a/b")).toEqual({ name: "missing" });
     expect(parse("/nowhere")).toEqual({ name: "missing" });
     expect(parse("/app/jobs/7/nowhere")).toEqual({ name: "missing" });
   });

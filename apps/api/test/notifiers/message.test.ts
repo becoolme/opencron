@@ -23,6 +23,8 @@ const baseJob: JobRow = {
   notify_targets: null,
   last_notified_at: null,
   owner_user_id: null,
+  organization_id: null,
+  project_id: null,
   created_at: 0,
   updated_at: 0,
 };

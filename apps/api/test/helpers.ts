@@ -19,6 +19,10 @@ export async function clearDb() {
     env.DB.prepare("DELETE FROM jobs"),
     env.DB.prepare("DELETE FROM secrets"),
     env.DB.prepare("DELETE FROM api_keys"),
+    env.DB.prepare("DELETE FROM invitation"),
+    env.DB.prepare("DELETE FROM member"),
+    env.DB.prepare("DELETE FROM projects"),
+    env.DB.prepare("DELETE FROM organization"),
     env.DB.prepare("DELETE FROM sqlite_sequence WHERE name IN ('jobs','executions','secrets')"),
   ]);
 }
@@ -50,4 +54,14 @@ export async function createTestAccount(label = "user"): Promise<TestAccount> {
     userId: data.user.id,
     headers: { "content-type": "application/json", cookie },
   };
+}
+
+/**
+ * The personal workspace and its Default project for an account, recreated by the API if `clearDb` removed it. Use it
+ * before inserting jobs directly.
+ */
+export async function personalWorkspace(account: TestAccount): Promise<{ workspaceId: string; projectId: string }> {
+  const response = await SELF.fetch("https://w/api/projects", { headers: account.headers });
+  if (!response.ok) throw new Error(`Could not load projects (${response.status})`);
+  return { workspaceId: `ws_${account.userId}`, projectId: `pj_${account.userId}` };
 }

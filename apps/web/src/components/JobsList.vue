@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { t } from "../i18n";
 import { clock, dayLabel, describeCron, duration, relative } from "../format";
 import { href } from "../router";
-import { jobState, jobs, loaded, recent, recentByJob, RECENT_LIMIT } from "../store";
+import { jobState, jobs, loaded, projectFilter, projects, projectsById, recent, recentByJob, RECENT_LIMIT } from "../store";
 import { RUNTIME_LABEL, type Job } from "../types";
 import HeaderArt from "./HeaderArt.vue";
 import Icon from "./Icon.vue";
@@ -14,6 +14,8 @@ const filter = ref<Filter>("all");
 const query = ref("");
 const search = ref<HTMLInputElement | null>(null);
 const now = ref(Date.now());
+// Across several projects each row says which one it is in.
+const showProject = computed(() => projectFilter.value === "all" && projects.value.length > 1);
 
 const failedJobs = computed(() => jobs.value.filter((job) => jobState(job) === "fail"));
 const pausedJobs = computed(() => jobs.value.filter((job) => !job.enabled));
@@ -156,7 +158,7 @@ onBeforeUnmount(() => {
           <span class="method">{{ job.type === "url" ? job.method : (job.runtime === "python" ? "PY" : job.runtime === "go" ? "GO" : "JS") }}</span>
           <span style="min-width: 0">
             <b class="ellipsis" style="display: block; font-weight: 500; font-size: 15px; line-height: 1.3">{{ job.name }}</b>
-            <small class="mono faint ellipsis" style="display: block; font-size: 12.5px">{{ target(job) }}</small>
+            <small class="mono faint ellipsis" style="display: block; font-size: 12.5px"><template v-if="showProject && job.project_id">{{ projectsById.get(job.project_id)?.name }} · </template>{{ target(job) }}</small>
           </span>
         </span>
         <span style="display: grid; gap: 3px; justify-items: start; min-width: 0">

@@ -63,6 +63,7 @@ export function emptyForm(): JobForm {
     enabled: true,
     notify_targets: [],
     last_notified_at: null,
+    project_id: "",
   };
 }
 
@@ -83,6 +84,7 @@ export function jobToForm(job: Job): JobForm {
     enabled: job.enabled,
     notify_targets: job.notify_targets ? structuredClone(job.notify_targets) : [],
     last_notified_at: job.last_notified_at,
+    project_id: job.project_id ?? "",
   };
 }
 
@@ -136,6 +138,7 @@ export function formToPayload(form: JobForm): Record<string, unknown> {
     enabled: form.enabled,
     timeout_ms: form.timeout_ms,
     notify_targets: form.notify_targets.length ? form.notify_targets : null,
+    ...(form.project_id ? { project_id: form.project_id } : {}),
   };
   const payload: Record<string, unknown> =
     form.type === "url"

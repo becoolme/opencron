@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { env, SELF, fetchMock } from "cloudflare:test";
-import { applyMigrations, clearDb, createTestAccount, type TestAccount } from "./helpers";
+import { applyMigrations, clearDb, createTestAccount, personalWorkspace, type TestAccount } from "./helpers";
 
 let account: TestAccount;
 
@@ -192,14 +192,15 @@ describe("POST /api/jobs/:id/run — alerts", () => {
   });
 });
 
-describe("POST /api/jobs — account limit", () => {
-  it("refuses a job past the per-account limit", async () => {
+describe("POST /api/jobs — workspace limit", () => {
+  it("refuses a job past the per-workspace limit", async () => {
     const now = Math.floor(Date.now() / 1000);
+    const { workspaceId, projectId } = await personalWorkspace(account);
     const insert = env.DB.prepare(
-      `INSERT INTO jobs (name, url, method, cron, enabled, timeout_ms, next_run_at, created_at, updated_at, owner_user_id)
-       VALUES ('j', 'https://example.com', 'GET', '0 12 * * *', 0, 30000, ?, ?, ?, ?)`,
+      `INSERT INTO jobs (name, url, method, cron, enabled, timeout_ms, next_run_at, created_at, updated_at, owner_user_id, organization_id, project_id)
+       VALUES ('j', 'https://example.com', 'GET', '0 12 * * *', 0, 30000, ?, ?, ?, ?, ?, ?)`,
     );
-    await env.DB.batch(Array.from({ length: 200 }, () => insert.bind(now, now, now, account.userId)));
+    await env.DB.batch(Array.from({ length: 200 }, () => insert.bind(now, now, now, account.userId, workspaceId, projectId)));
     const res = await post("/api/jobs", BASE_JOB);
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toMatch(/at most 200 jobs/);
