@@ -6,7 +6,7 @@ a Telegram bot. Each job picks the channels it reports to.
 
 ## Channels
 
-Owners and admins add, change, test and delete channels on the **Alert channels** page. Members see the list and pick
+Owners and admins add, change, test and delete channels on the **Alert channels** page, and can add one from the job form. Members see the list and pick
 channels on their jobs. A workspace has at most 50 channels; a job uses at most 20.
 
 | Type | Settings |
