@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { authClient } from "../auth-client";
+import { authPath } from "../auth-routes";
+import { currentPath, replace, route } from "../router";
 import { t } from "../i18n";
 import LangSwitch from "./LangSwitch.vue";
 import HeaderArt from "./HeaderArt.vue";
 
 const emit = defineEmits<{ authenticated: [] }>();
 
-const mode = ref<"sign-in" | "sign-up">("sign-in");
 const name = ref("");
 const email = ref("");
 const password = ref("");
@@ -15,7 +16,9 @@ const confirmPassword = ref("");
 const pending = ref(false);
 const error = ref("");
 
-const isSignUp = computed(() => mode.value === "sign-up");
+const isSignUp = computed(() => route.value.name === "sign-up");
+const signInPath = computed(() => authPath(currentPath.value, "sign-in"));
+const signUpPath = computed(() => authPath(currentPath.value, "sign-up"));
 // the deployment may allow only its first account (SIGNUP=closed); offer sign-up only when it would work
 const signUpOpen = ref(true);
 
@@ -26,15 +29,17 @@ onMounted(async () => {
   } catch {
     // keep offering sign-up; the server refuses it if it is closed
   }
-  if (!signUpOpen.value) switchMode("sign-in");
 });
 
-function switchMode(next: "sign-in" | "sign-up"): void {
-  mode.value = next;
+watch([signUpOpen, isSignUp], () => {
+  if (!signUpOpen.value && isSignUp.value) replace(signInPath.value);
+});
+
+watch(isSignUp, () => {
   error.value = "";
   password.value = "";
   confirmPassword.value = "";
-}
+});
 
 async function submit(): Promise<void> {
   error.value = "";
@@ -83,10 +88,10 @@ async function submit(): Promise<void> {
         {{ t("Schedule HTTP calls and sandboxed scripts with cron.") }}
       </p>
 
-      <div v-if="signUpOpen" class="seg tabs" role="tablist">
-        <button type="button" role="tab" :class="{ on: !isSignUp }" :aria-selected="!isSignUp" @click="switchMode('sign-in')">{{ t("Sign in") }}</button>
-        <button type="button" role="tab" :class="{ on: isSignUp }" :aria-selected="isSignUp" @click="switchMode('sign-up')">{{ t("Sign up") }}</button>
-      </div>
+      <nav v-if="signUpOpen" class="seg tabs">
+        <a class="ftab" :class="{ on: !isSignUp }" :aria-current="!isSignUp ? 'page' : undefined" :href="signInPath">{{ t("Sign in") }}</a>
+        <a class="ftab" :class="{ on: isSignUp }" :aria-current="isSignUp ? 'page' : undefined" :href="signUpPath">{{ t("Sign up") }}</a>
+      </nav>
 
       <p v-else class="muted" style="margin: 0 0 20px; font-size: 14px">{{ t("Sign-up is closed on this deployment. Ask its administrator for an account.") }}</p>
 

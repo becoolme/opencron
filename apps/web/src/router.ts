@@ -17,6 +17,7 @@ function app(locale: Locale, path: string): string {
 }
 
 export const route = ref<Route>(parse(splitPath(location.pathname).rest));
+export const currentPath = ref(location.pathname + location.search + location.hash);
 
 /** The address the app shows, so a cancelled Back can put it back. */
 let shown = location.pathname + location.search;
@@ -26,6 +27,7 @@ function sync(): void {
   lang.value = locale;
   markDocument();
   route.value = parse(rest);
+  currentPath.value = location.pathname + location.search + location.hash;
   shown = location.pathname + location.search;
 }
 
@@ -55,6 +57,12 @@ export function go(path: string): void {
   if (path !== location.pathname + location.search) history.pushState(null, "", path);
   sync();
   window.scrollTo(0, 0);
+}
+
+/** Session redirects replace the current entry and cannot be blocked by an expired session's editor. */
+export function replace(path: string): void {
+  history.replaceState(null, "", path);
+  sync();
 }
 
 /** Shows the current page in another language. */

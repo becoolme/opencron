@@ -46,7 +46,7 @@ try {
 
   step("The app serves the web build and the API");
   assert.equal(await (await fetch(`${base}/health`)).text(), "ok");
-  const page = await fetch(`${base}/zh-Hans/jobs/1`);
+  const page = await fetch(`${base}/zh-Hans/app/jobs/1`);
   assert.equal(page.status, 200);
   assert.match(await page.text(), /<div id="app"/);
   assert.match(page.headers.get("content-security-policy") ?? "", /frame-ancestors 'none'/);
