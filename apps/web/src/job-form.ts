@@ -61,7 +61,7 @@ export function emptyForm(): JobForm {
     cron: "*/5 * * * *",
     timeout_ms: 30_000,
     enabled: true,
-    notify_targets: [],
+    channel_ids: [],
     last_notified_at: null,
     project_id: "",
   };
@@ -82,7 +82,7 @@ export function jobToForm(job: Job): JobForm {
     cron: job.cron,
     timeout_ms: job.timeout_ms,
     enabled: job.enabled,
-    notify_targets: job.notify_targets ? structuredClone(job.notify_targets) : [],
+    channel_ids: [...job.channel_ids],
     last_notified_at: job.last_notified_at,
     project_id: job.project_id ?? "",
   };
@@ -137,7 +137,7 @@ export function formToPayload(form: JobForm): Record<string, unknown> {
     cron: form.cron.trim(),
     enabled: form.enabled,
     timeout_ms: form.timeout_ms,
-    notify_targets: form.notify_targets.length ? form.notify_targets : null,
+    channel_ids: form.channel_ids,
     ...(form.project_id ? { project_id: form.project_id } : {}),
   };
   const payload: Record<string, unknown> =

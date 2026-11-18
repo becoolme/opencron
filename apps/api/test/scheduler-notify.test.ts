@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env, fetchMock } from "cloudflare:test";
-import { applyMigrations, clearDb } from "./helpers";
+import { applyMigrations, clearDb, insertChannel, linkChannel } from "./helpers";
+import type { NotifyTarget } from "../src/types";
 import { dispatchDueJobs } from "../src/scheduler";
 
 beforeAll(async () => {
@@ -9,17 +10,23 @@ beforeAll(async () => {
   fetchMock.disableNetConnect();
 });
 afterAll(() => fetchMock.deactivate());
-beforeEach(async () => { await clearDb(); });
+const WORKSPACE = "ws_scheduler_notify";
+beforeEach(async () => {
+  await clearDb();
+  await env.DB.prepare(`INSERT INTO organization (id, name, slug, "createdAt") VALUES (?, 'n', 'ws-scheduler-notify', ?)`)
+    .bind(WORKSPACE, new Date().toISOString()).run();
+});
 
-async function insertFailingJob(notifyTargets: unknown[] | null) {
+async function insertFailingJob(targets: NotifyTarget[]) {
   const now = Math.floor(Date.now() / 1000);
-  const targetsJson = notifyTargets ? JSON.stringify(notifyTargets) : null;
   await env.DB.prepare(
     `INSERT INTO jobs (name, url, method, cron, enabled, timeout_ms, next_run_at,
-                       created_at, updated_at, notify_targets)
+                       created_at, updated_at, organization_id)
      VALUES ('j', 'https://example.test/bad', 'GET', '* * * * *', 1, 30000, ?, ?, ?, ?)`,
-  ).bind(now - 10, now, now, targetsJson).run();
-  return (await env.DB.prepare("SELECT id FROM jobs ORDER BY id DESC LIMIT 1").first<{ id: number }>())!.id;
+  ).bind(now - 10, now, now, WORKSPACE).run();
+  const id = (await env.DB.prepare("SELECT id FROM jobs ORDER BY id DESC LIMIT 1").first<{ id: number }>())!.id;
+  for (const target of targets) await linkChannel(id, await insertChannel(WORKSPACE, target));
+  return id;
 }
 
 describe("scheduler + notify", () => {

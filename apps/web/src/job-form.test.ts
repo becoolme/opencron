@@ -21,7 +21,7 @@ const job: Job = {
   cron: "0 * * * *",
   timeout_ms: 10_000,
   enabled: false,
-  notify_targets: [{ type: "slack", url: "https://hooks.slack.com/services/a" }],
+  channel_ids: ["ch_a"],
   last_notified_at: null,
   project_id: "pj_1",
   last_status: null,
@@ -66,7 +66,7 @@ describe("formToPayload", () => {
       cron: "*/5 * * * *",
       enabled: true,
       timeout_ms: 30_000,
-      notify_targets: null,
+      channel_ids: [],
     });
   });
 
@@ -94,15 +94,15 @@ describe("jobToForm", () => {
       cron: "0 * * * *",
       enabled: false,
       timeout_ms: 10_000,
-      notify_targets: job.notify_targets,
+      channel_ids: ["ch_a"],
       project_id: "pj_1",
     });
   });
 
-  it("copies alert targets so edits don't touch the cached job", () => {
+  it("copies alert channels so edits don't touch the cached job", () => {
     const edited = jobToForm(job);
-    edited.notify_targets.pop();
-    expect(job.notify_targets).toHaveLength(1);
+    edited.channel_ids.pop();
+    expect(job.channel_ids).toHaveLength(1);
   });
 });
 

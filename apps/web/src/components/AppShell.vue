@@ -150,6 +150,9 @@ function closeMenu(): void {
         <a class="nav" :class="{ on: on('secrets') }" :href="href.secrets" :aria-current="on('secrets') ? 'page' : undefined">
           <Icon name="lock" /><span>{{ t("Secrets") }}</span>
         </a>
+        <a class="nav" :class="{ on: on('channels') }" :href="href.channels" :aria-current="on('channels') ? 'page' : undefined">
+          <Icon name="bell" /><span>{{ t("Alert channels") }}</span>
+        </a>
         <a v-if="canManage" class="nav" :class="{ on: on('keys') }" :href="href.keys" :aria-current="on('keys') ? 'page' : undefined">
           <Icon name="key" /><span>{{ t("API & MCP") }}</span>
         </a>

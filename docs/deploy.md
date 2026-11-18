@@ -20,7 +20,7 @@ binding (for script jobs). The commands run from the repository root.
 
    ```bash
    pnpm db:init:remote
-   pnpm db:migrate:remote:0002   # …through 0009
+   pnpm db:migrate:remote:0002   # …through 0011
    pnpm --filter @opencron/api exec wrangler secret put BETTER_AUTH_SECRET
    ```
 

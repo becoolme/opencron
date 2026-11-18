@@ -76,7 +76,8 @@ export interface JobRow {
   script: string | null;
   script_version: number;
   runtime: ScriptRuntime;
-  notify_targets: string | null;   // JSON-encoded NotifyTarget[] in DB
+  /** Alert targets saved on the job before channels existed; channel-migration.ts moves them and clears it. */
+  notify_targets: string | null;
   last_notified_at: number | null; // unix seconds
   created_at: number;
   updated_at: number;
@@ -102,7 +103,8 @@ export interface JobDto {
   script: string | null;
   script_version: number;
   runtime: ScriptRuntime;
-  notify_targets: NotifyTarget[] | null;
+  /** The alert channels that get this job's failures. */
+  channel_ids: string[];
   last_notified_at: number | null;
   project_id: string | null;
   created_at: number;
@@ -128,7 +130,7 @@ export type NotifyTarget =
   | { type: "slack";    url: string }
   | { type: "discord";  url: string };
 
-export function jobRowToDto(row: JobRow): JobDto {
+export function jobRowToDto(row: JobRow, channelIds: string[] = []): JobDto {
   return {
     id: row.id,
     name: row.name,
@@ -146,11 +148,7 @@ export function jobRowToDto(row: JobRow): JobDto {
     script: row.script,
     script_version: row.script_version,
     runtime: row.runtime ?? "javascript",
-    notify_targets: (() => {
-      if (!row.notify_targets) return null;
-      try { return JSON.parse(row.notify_targets) as NotifyTarget[]; }
-      catch { console.error(`[jobs] job ${row.id}: invalid notify_targets JSON`); return null; }
-    })(),
+    channel_ids: channelIds,
     last_notified_at: row.last_notified_at,
     project_id: row.project_id ?? null,
     created_at: row.created_at,
@@ -160,13 +158,10 @@ export function jobRowToDto(row: JobRow): JobDto {
 
 const HIDDEN = "***";
 
-function hideUrl(url: string): string {
-  try { return `${new URL(url).origin}/${HIDDEN}`; } catch { return HIDDEN; }
-}
-
 /**
- * The job as a read-only API key sees it: request headers, the request body and alert credentials (webhook URLs, signing
- * secrets, bot tokens) are replaced, so a key handed to a dashboard or an agent cannot be used to post as the account.
+ * The job as a read-only API key sees it: request headers and the request body are replaced, so a key handed to a
+ * dashboard or an agent cannot be used to call the job's target as the account. Alert credentials live in channels,
+ * which are always masked.
  */
 export function redactJobDto(dto: JobDto): JobDto {
   const hideValues = (headers: Record<string, string> | null | undefined) =>
@@ -175,14 +170,5 @@ export function redactJobDto(dto: JobDto): JobDto {
     ...dto,
     headers: hideValues(dto.headers) ?? null,
     body: dto.body == null ? dto.body : HIDDEN,
-    notify_targets: dto.notify_targets?.map((target): NotifyTarget => {
-      switch (target.type) {
-        case "http": return { ...target, url: hideUrl(target.url), ...(target.headers ? { headers: hideValues(target.headers)! } : {}) };
-        case "telegram": return { ...target, bot_token: HIDDEN };
-        case "lark":
-        case "dingtalk": return { ...target, url: hideUrl(target.url), ...(target.sign_secret ? { sign_secret: HIDDEN } : {}) };
-        default: return { ...target, url: hideUrl(target.url) };
-      }
-    }) ?? null,
   };
 }

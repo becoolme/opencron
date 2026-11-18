@@ -28,20 +28,41 @@ export function urlPlaceholder(type: NotifyType): string {
   }
 }
 
-export function maskSecret(value: string): string {
-  if (!value) return "";
-  if (value.length <= 8) return "•••";
-  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+/** A form draft for a saved channel. Secrets arrive masked; sending them back unchanged keeps the saved values. */
+export function configToDraft(type: NotifyType, config: Record<string, unknown> | null): NotifyDraft {
+  const draft = emptyNotifyDraft(type);
+  if (!config) return draft;
+  const text = (key: string) => (typeof config[key] === "string" ? (config[key] as string) : "");
+  draft.url = text("url");
+  draft.bot_token = text("bot_token");
+  draft.chat_id = text("chat_id");
+  draft.sign_secret = text("sign_secret");
+  if (config.headers && typeof config.headers === "object") draft.headers_text = JSON.stringify(config.headers);
+  return draft;
 }
 
-/** Where a target sends to, without its secrets. */
-export function targetSummary(target: NotifyTarget): string {
-  if (target.type === "telegram") return `${maskSecret(target.bot_token)} → ${target.chat_id}`;
+/**
+ * The `config` to send for a draft, or the error to show. When editing, an emptied signing secret is sent as null,
+ * which removes it; any other empty or masked field keeps what is saved.
+ */
+export function draftToConfig(draft: NotifyDraft, editing: boolean): { config: Record<string, unknown>; error?: undefined } | { config?: undefined; error: string } {
+  const result = draftToTarget(draft);
+  if (result.error !== undefined) return { error: result.error };
+  const { type: _type, ...config } = result.target as NotifyTarget & Record<string, unknown>;
+  if (editing && (draft.type === "lark" || draft.type === "dingtalk") && !draft.sign_secret.trim()) {
+    return { config: { ...config, sign_secret: null } };
+  }
+  return { config };
+}
+
+/** Where a channel sends to, from its masked config. */
+export function channelSummary(type: NotifyType, config: Record<string, unknown> | null): string {
+  if (!config) return t("Settings can't be read. Enter them again.");
+  if (type === "telegram") return `${String(config.bot_token ?? "")} → ${String(config.chat_id ?? "")}`;
   try {
-    const url = new URL(target.url);
-    return `${url.host}${url.pathname.length > 1 ? "/…" : ""}`;
+    return new URL(String(config.url)).host;
   } catch {
-    return target.url;
+    return String(config.url ?? "");
   }
 }
 

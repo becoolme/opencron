@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { api } from "../api";
 import { t } from "../i18n";
 import { clock, dayLabel, describeCron, duration, errorText, nextRuns, relative, shortDateTime } from "../format";
 import { go, href } from "../router";
-import { appendPage, fetchExecutions, jobState, jobsById, refresh, succeedsOn2xx } from "../store";
+import { channelSummary, notifyName } from "../notify";
+import { appendPage, channelsById, fetchExecutions, jobState, jobsById, loadChannels, refresh, succeedsOn2xx } from "../store";
 import { RUNTIME_LABEL, type Execution, type Job } from "../types";
 import HeaderArt from "./HeaderArt.vue";
 import Icon from "./Icon.vue";
@@ -156,17 +157,8 @@ const kindLabel = computed(() => {
   return t("Script job · {runtime}", { runtime });
 });
 
-function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name: string; detail: string } {
-  const names: Record<string, string> = { http: "Webhook", lark: t("Lark"), telegram: "Telegram", dingtalk: t("DingTalk"), slack: "Slack", discord: "Discord" };
-  if (target.type === "telegram") return { name: names.telegram, detail: `chat ${target.chat_id}` };
-  let host = target.url;
-  try {
-    host = new URL(target.url).host;
-  } catch {
-    // keep the raw value
-  }
-  return { name: names[target.type], detail: host };
-}
+// names for the job's channels; without them the ids are shown
+onMounted(() => { loadChannels().catch(() => undefined); });
 </script>
 
 <template>
@@ -315,14 +307,19 @@ function targetLabel(target: NonNullable<Job["notify_targets"]>[number]): { name
             <h3 class="serif">{{ t("Alerts") }}</h3>
             <a class="link" :href="href.edit(job.id)">{{ t("Edit") }}</a>
           </div>
-          <div v-if="job.notify_targets?.length">
-            <div v-for="(target, i) in job.notify_targets" :key="i" class="route">
+          <div v-if="job.channel_ids.length">
+            <div v-for="id in job.channel_ids" :key="id" class="route">
               <span class="ri"><Icon name="bell" /></span>
-              <span style="min-width: 0">{{ targetLabel(target).name }}<small class="faint ellipsis" style="display: block; font-size: 12.5px">{{ targetLabel(target).detail }}</small></span>
+              <span v-if="channelsById.get(id)" style="min-width: 0">
+                {{ channelsById.get(id)!.name }}
+                <small v-if="!channelsById.get(id)!.enabled" class="faint"> · {{ t("Off") }}</small>
+                <small class="faint ellipsis" style="display: block; font-size: 12.5px">{{ notifyName(channelsById.get(id)!.type) }} · {{ channelSummary(channelsById.get(id)!.type, channelsById.get(id)!.config) }}</small>
+              </span>
+              <span v-else class="faint mono">{{ id }}</span>
             </div>
           </div>
           <p v-else class="muted" style="margin: 0; font-size: 14px">{{ t("No alert channels. Failures only show up here.") }}</p>
-          <p v-if="job.notify_targets?.length" class="muted foot-note">{{ t("Notifies when a run fails.") }}</p>
+          <p v-if="job.channel_ids.length" class="muted foot-note">{{ t("Notifies when a run fails.") }}</p>
         </section>
 
         <button type="button" class="btn danger" :disabled="busy !== ''" @click="remove"><Icon name="trash" />{{ t("Delete job") }}</button>

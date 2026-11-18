@@ -89,6 +89,7 @@ export const href = {
   get jobs() { return app(lang.value, "/"); },
   get runs() { return app(lang.value, "/runs"); },
   get secrets() { return app(lang.value, "/secrets"); },
+  get channels() { return app(lang.value, "/channels"); },
   get keys() { return app(lang.value, "/keys"); },
   get members() { return app(lang.value, "/members"); },
   get settings() { return app(lang.value, "/settings"); },

@@ -15,12 +15,8 @@ const cron = z.string().min(1).max(100).describe("Five-field cron expression, ev
 const timeout = z.number().int().min(1000).max(60000).describe("How long a run may take, in milliseconds (1000 to 60000). Defaults to 30000.");
 const headers = z.record(z.string(), z.string()).describe("Request headers sent with the call.");
 const runtime = z.enum(["javascript", "python", "go"]).describe("Script language. Only those that get_meta lists can run on this deployment.");
-const notifyTargets = z.array(z.discriminatedUnion("type", [
-  z.object({ type: z.literal("http"), url: z.string().url(), headers: headers.optional() }),
-  z.object({ type: z.enum(["lark", "dingtalk"]), url: z.string().url(), sign_secret: z.string().min(1).optional() }),
-  z.object({ type: z.enum(["slack", "discord"]), url: z.string().url() }),
-  z.object({ type: z.literal("telegram"), bot_token: z.string().min(1), chat_id: z.string().min(1) }),
-])).describe("Where to send an alert when a run fails. Replaces the job's previous list; an empty list turns alerts off.");
+const channelIds = z.array(z.string().min(1)).max(20)
+  .describe("Alert channel ids from list_channels that get this job's failures. Replaces the job's previous list; an empty list turns alerts off. Left out on create, the workspace's default channels are used.");
 const page = {
   limit: z.number().int().min(1).max(200).optional().describe("Most runs to return, newest first."),
   before: z.number().int().positive().optional().describe("Only runs that started before this unix time in seconds, to page back."),
@@ -45,7 +41,7 @@ const createJob = z.object({
   body: z.string().optional().describe("For type url: request body, sent as is."),
   script: z.string().min(1).optional().describe("For type script: the source. JavaScript exports default { fetch(request, env) } and returns a Response; secrets arrive as env.NAME (Python os.environ, Go os.Getenv)."),
   runtime: runtime.optional().describe("For type script: the language. Defaults to javascript."),
-  notify_targets: notifyTargets.optional(),
+  channel_ids: channelIds.optional(),
   project_id: z.string().min(1).optional().describe("Project to create the job in, from list_projects. Defaults to the project argument, or to the only project there is."),
 });
 
@@ -61,7 +57,7 @@ const updateJob = z.object({
   body: z.string().nullable().optional().describe("Type url only. null removes the body."),
   script: z.string().min(1).optional().describe("Type script only: the new source."),
   runtime: runtime.optional().describe("Type script only."),
-  notify_targets: notifyTargets.optional(),
+  channel_ids: channelIds.optional(),
   project_id: z.string().min(1).optional().describe("Move the job to this project of the same workspace."),
 });
 
@@ -69,8 +65,9 @@ export const TOOLS: Tool[] = [
   { name: "list_workspaces", description: "List the workspaces this caller can use, with ids, names and the caller's role. Pass an id as the workspace argument of other tools; without it they use the current workspace (an API key always uses its own).", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/workspaces" }) },
   { name: "list_projects", description: "List the projects of the workspace. Pass an id as the project argument to limit other tools to that project, or as project_id when creating a job.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/projects" }) },
   { name: "get_meta", description: "Read what this OpenCron deployment can run: the script runtimes it offers. Call it before creating a script job in a language other than JavaScript.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/meta" }) },
+  { name: "list_channels", description: "List the alert channels of the workspace: where failure alerts go (webhook, Slack, Discord, Telegram, Lark, DingTalk), with ids, names, whether each is enabled and a default for new jobs, and masked settings. Pass ids as channel_ids when creating or updating a job. Channels are created and changed in the app or with the REST API.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/channels" }) },
   { name: "list_jobs", description: "List every job of the workspace (or of the project, when one is given) with its id, type, schedule, enabled state, next run and last result. Use it to find a job id before reading or changing it.", schema: z.object({}), readOnly: true, build: () => ({ method: "GET", path: "/api/jobs" }) },
-  { name: "get_job", description: "Read one job's full configuration, including its script source or HTTP request and its alert targets.", schema: z.object({ id }), readOnly: true, build: ({ id }) => ({ method: "GET", path: `/api/jobs/${id}` }) },
+  { name: "get_job", description: "Read one job's full configuration, including its script source or HTTP request and the ids of its alert channels.", schema: z.object({ id }), readOnly: true, build: ({ id }) => ({ method: "GET", path: `/api/jobs/${id}` }) },
   { name: "create_job", description: "Create a scheduled job and return it. A url job calls an HTTP endpoint on the schedule; a script job runs code (see get_meta for the languages). It starts on its schedule right away unless enabled is false. Needs a write API key.", schema: createJob, build: (args) => ({ method: "POST", path: "/api/jobs", body: args }) },
   { name: "update_job", description: "Change a job. Send its id and only the fields to change; the type cannot change. Use pause_job or resume_job to only switch it off or on. Needs a write API key.", schema: updateJob, idempotent: true, build: ({ id, ...rest }) => ({ method: "PATCH", path: `/api/jobs/${id}`, body: rest }) },
   { name: "pause_job", description: "Stop a job from running on its schedule, keeping its configuration and history. Needs a write API key.", schema: z.object({ id }), idempotent: true, build: ({ id }) => ({ method: "PATCH", path: `/api/jobs/${id}`, body: { enabled: false } }) },

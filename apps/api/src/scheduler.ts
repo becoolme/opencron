@@ -3,6 +3,7 @@ import type { Env, JobRow } from "./types";
 import { runJob } from "./runner";
 import { nextRunAt } from "./cron";
 import { maybeNotify } from "./notifier";
+import { migrateInlineTargets } from "./channel-migration";
 import type { LoaderExecutionContext } from "./script-runner";
 
 /**
@@ -53,6 +54,12 @@ export async function cleanupOldExecutions(env: Env, nowSec: number): Promise<vo
 }
 
 export async function handleScheduled(env: Env, ctx?: LoaderExecutionContext): Promise<void> {
+  // alert targets saved on jobs before channels existed become channels before any job alerts
+  try {
+    await migrateInlineTargets(env);
+  } catch (error) {
+    console.error("[scheduler] moving alert targets into channels failed:", error);
+  }
   await dispatchDueJobs(env, ctx);
   // Probabilistic cleanup, ~1/60 per minute → about once an hour on average.
   if (Math.random() < 1 / 60) {

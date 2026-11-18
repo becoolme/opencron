@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
 import { api, scope } from "./api";
 import { errorText } from "./format";
-import type { Execution, ExecutionWire, Job, Project, ScriptRuntime, Workspace } from "./types";
+import type { AlertChannel, Execution, ExecutionWire, Job, Project, ScriptRuntime, Workspace } from "./types";
 
 export const RECENT_LIMIT = 200;
 
@@ -27,6 +27,18 @@ const projectKey = (id: string) => `opencron:project:${id}`;
 
 function rememberedProject(id: string): string {
   try { return localStorage.getItem(projectKey(id)) ?? "all"; } catch { return "all"; }
+}
+
+/** The alert channels of the current workspace, loaded when a page needs them. */
+export const channels = ref<AlertChannel[]>([]);
+export const channelsById = computed(() => new Map(channels.value.map((channel) => [channel.id, channel])));
+
+export async function loadChannels(): Promise<AlertChannel[]> {
+  const asked = scope.workspace;
+  // channels of every project, so a job's picker and its detail page can name all of them
+  const { channels: list } = await api<{ channels: AlertChannel[] }>("/channels", { headers: { "x-project-id": "all" } });
+  if (asked === scope.workspace) channels.value = list;
+  return list;
 }
 
 export const jobsById = computed(() => new Map(jobs.value.map((job) => [job.id, job])));
@@ -142,6 +154,7 @@ export function reset(): void {
   workspaceId.value = null;
   projects.value = [];
   projectFilter.value = "all";
+  channels.value = [];
   jobs.value = [];
   recent.value = [];
   loaded.value = false;

@@ -65,7 +65,7 @@ Job fields:
 | `url`, `method`, `headers`, `body` | For `url` jobs. `method` is one of GET, POST, PUT, PATCH, DELETE, HEAD. |
 | `script`, `runtime` | For `script` jobs. The script is at most 256 KB; `runtime` must be one `/api/meta` lists. See [scripts.md](scripts.md). |
 | `project_id` | The project the job belongs to. Needed on create only when the workspace has more than one project and no `x-project-id` header is sent. Changing it moves the job. |
-| `notify_targets` | Up to 10 alert targets for failed runs, scheduled or started by hand, or `null`. Each has a `type`: `http` (`url`, optional `headers`), `slack` or `discord` (`url`), `lark` or `dingtalk` (`url`, optional `sign_secret`), `telegram` (`bot_token`, `chat_id`). |
+| `channel_ids` | Ids of the alert channels that get this job's failed runs, scheduled or started by hand; at most 20. Sending it replaces the list and `[]` turns alerts off. Left out on create, the workspace's default channels are used. `notify_targets` is no longer accepted. See [alerts.md](alerts.md). |
 
 ```bash
 curl -X POST https://cron.example.com/api/jobs \
@@ -91,6 +91,10 @@ Both run lists take `limit` (default 50, at most 200) and `before` (a `started_a
 
 Names are upper case letters, digits and underscores, starting with a letter or underscore, at most 64 characters.
 [scripts.md](scripts.md#secrets) covers the limits and how scripts read them.
+
+### Alert channels
+
+`/api/channels` lists, creates, changes, tests and deletes alert channels. [alerts.md](alerts.md#api) has the endpoints.
 
 ### API keys
 

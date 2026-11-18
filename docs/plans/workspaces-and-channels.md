@@ -1,6 +1,6 @@
 # 设计：Workspace、Project 与告警渠道
 
-状态：草案，待确认（2026-11-17 已定：member 可编辑脚本任务、邀请用复制链接、`notify_targets` 直接替换、保留 project 层）。参照 OpenUptime 的同名模型，按 OpenCron 的体量裁剪。
+状态：第一、二步已实现；草案（2026-11-17 已定：member 可编辑脚本任务、邀请用复制链接、`notify_targets` 直接替换、保留 project 层）。参照 OpenUptime 的同名模型，按 OpenCron 的体量裁剪。
 
 ## 现状
 

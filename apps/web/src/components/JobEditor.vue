@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api } from "../api";
 import { t } from "../i18n";
 import { clock, dayLabel, describeCron, errorText, nextRuns, relative } from "../format";
 import { emptyForm, formToPayload, isTemplate, jobToForm, methodHasBody, METHODS, TEMPLATES, validateForm, type FormErrors } from "../job-form";
 import { go, guardLeave, href } from "../router";
-import { jobsById, projectFilter, projects, refresh, runtimes } from "../store";
+import { channels, jobsById, loadChannels, projectFilter, projects, refresh, runtimes } from "../store";
 import type { Job, JobForm, JobType, ScriptRuntime } from "../types";
 import Icon from "./Icon.vue";
-import NotifyEditor from "./NotifyEditor.vue";
+import ChannelPicker from "./ChannelPicker.vue";
 
 const CodeEditor = defineAsyncComponent(() => import("./CodeEditor.vue"));
 
@@ -42,6 +42,35 @@ const stopLoading = watch(
 );
 
 const dirty = computed(() => JSON.stringify(form.value) !== initial.value);
+
+// A new job starts with the workspace's default channels, once they are known.
+const channelsLoaded = ref(false);
+const channelsError = ref("");
+onMounted(async () => {
+  try {
+    await loadChannels();
+    if (!editing.value) {
+      const wasClean = !dirty.value;
+      form.value.channel_ids = channels.value
+        .filter((channel) => channel.enabled && channel.auto_enable && (channel.project_id === null || channel.project_id === form.value.project_id))
+        .map((channel) => channel.id);
+      if (wasClean) initial.value = JSON.stringify(form.value);
+    }
+  } catch (caught) {
+    channelsError.value = errorText(caught);
+  } finally {
+    channelsLoaded.value = true;
+  }
+});
+
+// A channel of another project can't alert for this job, so moving the job drops it.
+watch(() => form.value.project_id, (projectId) => {
+  const fits = (id: string) => {
+    const channel = channels.value.find((item) => item.id === id);
+    return !channel || channel.project_id === null || channel.project_id === projectId;
+  };
+  if (!form.value.channel_ids.every(fits)) form.value.channel_ids = form.value.channel_ids.filter(fits);
+});
 
 // Errors show after the first save attempt, then update as the user types.
 watch(form, () => {
@@ -311,7 +340,7 @@ onBeforeUnmount(() => {
             <h3 class="serif">{{ t("Alerts") }}</h3>
             <p class="muted" style="margin: 6px 0 0; font-size: 14px">{{ t("Notified when a run fails.") }}</p>
           </div>
-          <NotifyEditor v-model="form.notify_targets" />
+          <ChannelPicker v-model="form.channel_ids" :project-id="form.project_id" :loaded="channelsLoaded" :error="channelsError" />
         </section>
       </div>
 

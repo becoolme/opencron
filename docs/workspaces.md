@@ -20,6 +20,7 @@ removed from every workspace, you get a new personal one the next time you open 
 | See jobs, runs and secret names | ✓ | ✓ | ✓ |
 | Create, edit, run and delete jobs | ✓ | ✓ | ✓ |
 | Create, change and delete secrets | ✓ | ✓ | |
+| Create, change, test and delete alert channels | ✓ | ✓ | |
 | Create and revoke API keys | ✓ | ✓ | |
 | Rename the workspace, manage projects | ✓ | ✓ | |
 | Invite people, change roles, remove members | ✓ | ✓ (not owners) | |
@@ -31,7 +32,7 @@ can therefore read secret values by writing a script that prints them. Invite on
 secrets.
 
 A workspace always has at least one owner. The last owner cannot leave or be removed: make someone else owner first,
-or delete the workspace. Deleting a workspace deletes its jobs, runs, secrets and API keys and cannot be undone.
+or delete the workspace. Deleting a workspace deletes its jobs, runs, secrets, alert channels and API keys and cannot be undone.
 
 When someone leaves or is removed, the jobs they created stay in the workspace and their API keys for it are revoked
 at once.
@@ -39,7 +40,8 @@ at once.
 ## Projects
 
 Owners and admins add, rename and delete projects on the **Settings** page. A workspace has at most 50 projects and
-always keeps at least one. A project that still holds jobs cannot be deleted: move or delete its jobs first.
+always keeps at least one. A project that still holds jobs cannot be deleted: move or delete its jobs first. Deleting a project deletes the
+alert channels limited to it.
 
 The project picker in the sidebar narrows the job list and the runs to one project. When a workspace has more than one
 project, the job form asks which project a job goes into; a job can be moved to another project later.
@@ -59,6 +61,8 @@ withdraw it.
 Someone without an account opens the link, signs up with the invited address, and lands back on the invitation. With
 `SIGNUP = "closed"` (see [deploy.md](deploy.md)), sign-up stays open to any address with an open invitation, so you can
 close sign-up and still invite people.
+
+Members pick [alert channels](alerts.md) on their jobs; owners and admins set the channels up.
 
 ## API keys and projects
 

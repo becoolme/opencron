@@ -23,7 +23,8 @@ export interface Job {
   cron: string;
   timeout_ms: number;
   enabled: boolean;
-  notify_targets: NotifyTarget[] | null;
+  /** The alert channels a failed run notifies. */
+  channel_ids: string[];
   last_notified_at: number | null;
   project_id: string | null;
   last_status: "success" | "failed" | null;
@@ -62,7 +63,7 @@ export interface JobForm {
   cron: string;
   timeout_ms: number;
   enabled: boolean;
-  notify_targets: NotifyTarget[];
+  channel_ids: string[];
   last_notified_at: number | null;
   /** Empty until the workspace's projects are known. */
   project_id: string;
@@ -94,4 +95,18 @@ export interface Project {
   id: string;
   name: string;
   created_at: number;
+}
+
+/** An alert channel as the API sends it: secrets in `config` are masked, and `config` is null when it can't be read. */
+export interface AlertChannel {
+  id: string;
+  name: string;
+  type: NotifyType;
+  project_id: string | null;
+  enabled: boolean;
+  auto_enable: boolean;
+  config: Record<string, unknown> | null;
+  job_count: number;
+  created_at: number;
+  updated_at: number;
 }
