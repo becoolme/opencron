@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { api } from "../api";
+import { api, upgradeUrl } from "../api";
 import { t } from "../i18n";
 import { clock, dayLabel, describeCron, duration, errorText, nextRuns, relative, shortDateTime } from "../format";
 import { go, href } from "../router";
@@ -21,6 +21,8 @@ const runsLoaded = ref(false);
 const more = ref(false);
 const busy = ref<"" | "run" | "toggle" | "delete" | "more">("");
 const error = ref("");
+/** Set when the plan refused a job: where to pick a larger one. */
+const upgrade = ref<string | null>(null);
 
 async function loadRuns(before?: number): Promise<void> {
   const rows = await fetchExecutions(`/jobs/${props.id}/executions`, PAGE, before);
@@ -45,6 +47,7 @@ watch(
       await loadRuns();
     } catch (caught) {
       error.value = errorText(caught);
+      upgrade.value = upgradeUrl(caught);
     }
   },
   { immediate: true },
@@ -75,6 +78,7 @@ async function loadMore(): Promise<void> {
     await loadRuns(last.started_at + 1);
   } catch (caught) {
     error.value = errorText(caught);
+    upgrade.value = upgradeUrl(caught);
   } finally {
     busy.value = "";
   }
@@ -89,6 +93,7 @@ async function runNow(): Promise<void> {
     await Promise.all([refresh(), loadRuns()]);
   } catch (caught) {
     error.value = errorText(caught);
+    upgrade.value = upgradeUrl(caught);
   } finally {
     busy.value = "";
   }
@@ -102,6 +107,7 @@ async function toggle(): Promise<void> {
     await refresh();
   } catch (caught) {
     error.value = errorText(caught);
+    upgrade.value = upgradeUrl(caught);
   } finally {
     busy.value = "";
   }
@@ -117,6 +123,7 @@ async function remove(): Promise<void> {
     go(href.jobs);
   } catch (caught) {
     error.value = errorText(caught);
+    upgrade.value = upgradeUrl(caught);
     busy.value = "";
   }
 }
@@ -198,7 +205,10 @@ onMounted(() => { loadChannels().catch(() => undefined); });
       <HeaderArt :failed="job.last_status === 'failed'" />
     </div>
 
-    <p v-if="error" class="alert" role="alert">{{ error }}</p>
+    <p v-if="error" class="alert" role="alert">
+      {{ error }}
+      <a v-if="upgrade" :href="upgrade" class="btn sm" style="margin-left: 8px">{{ t("See plans") }}</a>
+    </p>
 
     <div class="stats">
       <div class="card stat">

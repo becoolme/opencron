@@ -12,9 +12,7 @@ import { canSeeProject, projectCondition, projectForNewJob } from "../workspace"
 import {
   channelIdsByJob, defaultChannelIds, dropForeignChannelsStatement, parseChannelIds, setJobChannelStatements,
 } from "../channels";
-
-/** Jobs one workspace can keep; each runs on the shared scheduler tick. */
-export const MAX_JOBS_PER_WORKSPACE = 200;
+import { jobCounts, maxJobs, overJobLimit } from "../usage";
 
 /** Largest script accepted, in characters. */
 const MAX_SCRIPT_LENGTH = 256 * 1024;
@@ -129,10 +127,14 @@ jobsRouter.post("/", async (c) => {
   if (err) return c.json({ error: err }, 400);
   const project = await projectForNewJob(c, input.project_id);
   if ("error" in project) return c.json({ error: project.error }, 400);
-  const count = await getDatabase(c.env).prepare("SELECT COUNT(*) AS n FROM jobs WHERE organization_id = ?")
-    .bind(workspaceId).first<{ n: number }>();
-  if (Number(count?.n ?? 0) >= MAX_JOBS_PER_WORKSPACE) {
-    return c.json({ error: `A workspace can have at most ${MAX_JOBS_PER_WORKSPACE} jobs` }, 400);
+  const enabled = input.enabled === false ? 0 : 1;
+  const limit = maxJobs(await c.get("edition").plan(c.env, workspaceId));
+  if ((await jobCounts(c)).total >= limit) {
+    return c.json({ error: `A workspace can have at most ${limit} jobs` }, 400);
+  }
+  if (enabled) {
+    const refusal = await overJobLimit(c, 1);
+    if (refusal) return refusal;
   }
   // without channel_ids, a new job gets the workspace's default channels
   const channelIds = input.channel_ids === undefined
@@ -142,7 +144,6 @@ jobsRouter.post("/", async (c) => {
 
   const now = Math.floor(Date.now() / 1000);
   const type = input.type ?? "url";
-  const enabled = input.enabled === false ? 0 : 1;
   const timeout = input.timeout_ms ?? 30000;
   const next = nextRunAt(input.cron!, now);
 
@@ -245,6 +246,10 @@ jobsRouter.patch("/:id", async (c) => {
   const input = (await c.req.json().catch(() => ({}))) as UpdateInput;
   const err = validateUpdate(c.env, input, existing.type);
   if (err) return c.json({ error: err }, 400);
+  if (input.enabled === true && existing.enabled === 0) {
+    const refusal = await overJobLimit(c, 1);
+    if (refusal) return refusal;
+  }
   let projectId = existing.project_id;
   if (input.project_id !== undefined && input.project_id !== existing.project_id) {
     // moving a job: its script storage is keyed by the job and goes with it

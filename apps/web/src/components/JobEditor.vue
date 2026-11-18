@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { api } from "../api";
+import { api, upgradeUrl } from "../api";
 import { t } from "../i18n";
 import { clock, dayLabel, describeCron, errorText, nextRuns, relative } from "../format";
 import { emptyForm, formToPayload, isTemplate, jobToForm, methodHasBody, METHODS, TEMPLATES, validateForm, type FormErrors } from "../job-form";
@@ -24,6 +24,8 @@ const errors = ref<FormErrors>({});
 const submitted = ref(false);
 const saving = ref(false);
 const saveError = ref("");
+/** Set when the plan refused a job: where to pick a larger one. */
+const upgrade = ref<string | null>(null);
 
 // Load the job once; later background refreshes must not overwrite what the user is typing.
 const stopLoading = watch(
@@ -164,6 +166,7 @@ async function save(): Promise<void> {
     go(href.job(id!));
   } catch (caught) {
     saveError.value = errorText(caught);
+    upgrade.value = upgradeUrl(caught);
   } finally {
     saving.value = false;
   }
@@ -373,7 +376,10 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="savebar">
-      <p v-if="saveError" class="alert" role="alert" style="margin: 0; flex: 1 1 100%">{{ saveError }}</p>
+      <p v-if="saveError" class="alert" role="alert" style="margin: 0; flex: 1 1 100%">
+        {{ saveError }}
+        <a v-if="upgrade" :href="upgrade" class="btn sm" style="margin-left: 8px">{{ t("See plans") }}</a>
+      </p>
       <p v-else-if="submitted && Object.keys(errors).length" class="err-note" role="status">{{ t("Fix the highlighted fields to save.") }}</p>
       <span v-else class="faint" style="font-size: 13px">{{ dirty ? t("Unsaved changes") : "" }}</span>
       <div style="display: flex; gap: 10px; margin-left: auto">
