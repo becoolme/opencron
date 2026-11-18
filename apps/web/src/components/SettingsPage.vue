@@ -51,6 +51,20 @@ const meter = computed(() => {
   const limit = plan.value?.plan.max_active_jobs;
   return limit ? Math.min(100, Math.round((plan.value!.jobs.active / limit) * 100)) : 0;
 });
+const billingError = ref("");
+const billingBusy = ref(false);
+/** Checkout and the billing portal are pages of the payment provider; the API hands out their address. */
+async function openBilling(path: string): Promise<void> {
+  billingError.value = "";
+  billingBusy.value = true;
+  try {
+    const { url } = await api<{ url: string }>(path.replace(/^\/api/, ""), { method: "POST" });
+    window.location.assign(url);
+  } catch (caught) {
+    billingError.value = errorText(caught);
+    billingBusy.value = false;
+  }
+}
 const day = (seconds: number) => new Date(seconds * 1000).toLocaleDateString(intlLocale(), { dateStyle: "medium" });
 
 /* projects */
@@ -195,10 +209,11 @@ async function leave(): Promise<void> {
           {{ offer.max_active_jobs === null ? t("No limit on jobs") : t("{n} jobs on at once", { n: offer.max_active_jobs }) }}
         </span>
         <span v-if="offer.id === plan.plan.id" class="faint" style="font-size: 13px">{{ t("Current plan") }}</span>
-        <a v-else-if="canManage && offer.checkout_url" :href="offer.checkout_url" class="btn sm primary">{{ t("Choose {plan}", { plan: offer.name }) }}</a>
+        <button v-else-if="canManage && offer.checkout_url" type="button" class="btn sm primary" :disabled="billingBusy" @click="openBilling(offer.checkout_url)">{{ t("Choose {plan}", { plan: offer.name }) }}</button>
       </div>
     </div>
-    <div v-if="canManage && plan.plan.manage_url"><a :href="plan.plan.manage_url" class="btn">{{ t("Manage billing") }}</a></div>
+    <div v-if="canManage && plan.plan.manage_url"><button type="button" class="btn" :disabled="billingBusy" @click="openBilling(plan.plan.manage_url)">{{ t("Manage billing") }}</button></div>
+    <p v-if="billingError" class="alert" role="alert" style="margin: 0">{{ billingError }}</p>
     <p v-if="!canManage" class="muted" style="margin: 0; font-size: 13px">{{ t("Only owners and admins can change the plan.") }}</p>
   </section>
 

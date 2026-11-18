@@ -10,9 +10,9 @@ export interface Plan {
   name: string;
   /** Jobs that may be turned on at once; null for no limit beyond the fixed one. */
   maxActiveJobs: number | null;
-  /** Where an owner or admin can pick a larger plan, if there is one. */
+  /** The page where an owner or admin can pick a larger plan, if there is one. */
   upgradeUrl?: string;
-  /** Where an owner or admin manages the paid subscription. */
+  /** An API path, under /api, that a POST answers with `{url}` of the billing portal for the paid subscription. */
   manageUrl?: string;
   /** The paid plan ends at the end of the period instead of renewing. */
   cancelAtPeriodEnd?: boolean;
@@ -26,7 +26,7 @@ export interface PlanOffer {
   name: string;
   priceUsd: number;
   maxActiveJobs: number | null;
-  /** Opens checkout for this plan; absent for the free plan. */
+  /** An API path, under /api, that a POST answers with `{url}` to send the browser to for buying this plan. */
   checkoutUrl?: string;
 }
 
