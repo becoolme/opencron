@@ -1,4 +1,5 @@
 import type { WorkerLoader } from "./loader-types";
+import type { Edition } from "./edition";
 
 export type ScriptRuntime = "javascript" | "python" | "go";
 
@@ -56,6 +57,8 @@ export type AppHonoEnv = {
     projectId: string | null;
     /** Projects this request may see: null when every project of the workspace is visible. */
     visibleProjectIds: string[] | null;
+    /** The edition serving this request: its plans and their limits. */
+    edition: Edition;
   };
 };
 

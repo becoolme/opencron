@@ -1,5 +1,20 @@
 interface ApiErrorBody {
   error?: string;
+  code?: string;
+  limit?: number;
+  upgrade_url?: string | null;
+}
+
+/** A refusal from the API, with the fields some refusals carry (a plan's limit and where to upgrade). */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number, readonly body: ApiErrorBody) {
+    super(message);
+  }
+}
+
+/** Where to pick a larger plan, when `error` is a refusal for being over the plan's limit. */
+export function upgradeUrl(error: unknown): string | null {
+  return error instanceof ApiError && error.body.code === "job_limit" ? (error.body.upgrade_url ?? null) : null;
 }
 
 /** Fired when the API answers 401: the session expired or was signed out elsewhere. */
@@ -27,7 +42,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText })) as ApiErrorBody;
-    throw new Error(body.error || "request failed");
+    throw new ApiError(body.error || "request failed", response.status, body);
   }
 
   if (response.status === 204) {

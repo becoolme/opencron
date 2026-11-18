@@ -1,9 +1,13 @@
 import parser from "cron-parser";
+import { ApiError } from "./api";
 import { intlLocale, t } from "./i18n";
 
 export const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 export function errorText(error: unknown): string {
+  if (error instanceof ApiError && error.body.code === "job_limit") {
+    return t("Your plan allows {n} jobs turned on at once. Pause one, or move to a larger plan.", { n: error.body.limit ?? 0 });
+  }
   return error instanceof Error ? error.message : String(error);
 }
 

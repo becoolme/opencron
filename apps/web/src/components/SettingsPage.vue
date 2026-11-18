@@ -2,10 +2,10 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { api } from "../api";
 import { errorText } from "../format";
-import { t } from "../i18n";
+import { intlLocale, t } from "../i18n";
 import { go, href } from "../router";
 import { boot, canManage, jobs, loadProjects, projectFilter, projects, reset, workspace, workspaces } from "../store";
-import type { Project, Workspace } from "../types";
+import type { Project, Usage, Workspace } from "../types";
 import Icon from "./Icon.vue";
 
 const props = defineProps<{ userId: string }>();
@@ -34,6 +34,24 @@ async function rename(): Promise<void> {
     savingName.value = false;
   }
 }
+
+/* plan: shown only where the service sells plans */
+const usage = ref<Usage | null>(null);
+watch(() => workspace.value?.id, async (id) => {
+  usage.value = null;
+  if (!id) return;
+  try {
+    usage.value = await api<Usage>("/usage");
+  } catch {
+    // the plan section is informational; the rest of the page works without it
+  }
+}, { immediate: true });
+const plan = computed(() => (usage.value?.metered ? usage.value : null));
+const meter = computed(() => {
+  const limit = plan.value?.plan.max_active_jobs;
+  return limit ? Math.min(100, Math.round((plan.value!.jobs.active / limit) * 100)) : 0;
+});
+const day = (seconds: number) => new Date(seconds * 1000).toLocaleDateString(intlLocale(), { dateStyle: "medium" });
 
 /* projects */
 // Job counts come from the loaded list, which covers every project only when no single project is chosen.
@@ -154,6 +172,36 @@ async function leave(): Promise<void> {
     <div v-if="canManage"><button type="submit" class="btn primary" :disabled="savingName || name.trim() === workspace?.name">{{ t("Save") }}</button></div>
   </form>
 
+  <section v-if="plan" id="plan" class="card sect">
+    <div>
+      <h3 class="serif">{{ t("Plan") }}</h3>
+      <p class="muted" style="margin: 6px 0 0; font-size: 14px">
+        {{ plan.plan.max_active_jobs === null
+          ? t("{plan} plan · {active} jobs on", { plan: plan.plan.name, active: plan.jobs.active })
+          : t("{plan} plan · {active} of {limit} jobs on", { plan: plan.plan.name, active: plan.jobs.active, limit: plan.plan.max_active_jobs }) }}
+        <template v-if="plan.plan.renews_at">
+          · {{ plan.plan.cancel_at_period_end ? t("ends {date}", { date: day(plan.plan.renews_at) }) : t("renews {date}", { date: day(plan.plan.renews_at) }) }}
+        </template>
+      </p>
+    </div>
+    <div v-if="plan.plan.max_active_jobs !== null" class="meter" role="progressbar" :aria-valuenow="plan.jobs.active" aria-valuemin="0" :aria-valuemax="plan.plan.max_active_jobs">
+      <span :style="{ width: `${meter}%` }" :class="{ full: meter >= 100 }"></span>
+    </div>
+    <div v-if="plan.offers.length" class="offers">
+      <div v-for="offer in plan.offers" :key="offer.id" class="offer" :class="{ current: offer.id === plan.plan.id }">
+        <strong>{{ offer.name }}</strong>
+        <span class="price">{{ offer.price_usd === 0 ? t("Free") : t("${price}/month", { price: offer.price_usd }) }}</span>
+        <span class="muted" style="font-size: 13px">
+          {{ offer.max_active_jobs === null ? t("No limit on jobs") : t("{n} jobs on at once", { n: offer.max_active_jobs }) }}
+        </span>
+        <span v-if="offer.id === plan.plan.id" class="faint" style="font-size: 13px">{{ t("Current plan") }}</span>
+        <a v-else-if="canManage && offer.checkout_url" :href="offer.checkout_url" class="btn sm primary">{{ t("Choose {plan}", { plan: offer.name }) }}</a>
+      </div>
+    </div>
+    <div v-if="canManage && plan.plan.manage_url"><a :href="plan.plan.manage_url" class="btn">{{ t("Manage billing") }}</a></div>
+    <p v-if="!canManage" class="muted" style="margin: 0; font-size: 13px">{{ t("Only owners and admins can change the plan.") }}</p>
+  </section>
+
   <section class="card sect">
     <div>
       <h3 class="serif">{{ t("Projects") }}</h3>
@@ -220,6 +268,14 @@ async function leave(): Promise<void> {
 .padd { display: flex; gap: 8px; }
 .padd .in { flex: 1; min-width: 0; max-width: 360px; }
 .danger-zone { border-color: #f0d0d0; }
+.meter { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.meter > span { display: block; height: 100%; background: var(--accent); }
+.meter > span.full { background: #c0392b; }
+.offers { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.offer { display: grid; gap: 6px; align-content: start; padding: 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.offer.current { border-color: var(--accent); }
+.offer .price { font-size: 18px; }
+.offer .btn { justify-self: start; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 720px) {
   .prow { grid-template-columns: minmax(0, 1fr) auto; }

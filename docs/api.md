@@ -40,6 +40,7 @@ member and invitation endpoints.
 | Method | Path | |
 | --- | --- | --- |
 | `GET` | `/api/meta` | `{runtimes}`: the script runtimes this deployment offers (`javascript` on Cloudflare; `javascript`, `python` and `go` with Docker or with a sandbox next to Cloudflare). |
+| `GET` | `/api/usage` | The workspace's jobs against its limits: `{metered, edition, jobs: {total, active, max}}`. A self-hosted install has no plans and answers `metered: false`; on a service that sells plans, `metered: true` adds `plan` and `offers`. |
 
 ### Jobs
 
@@ -60,7 +61,7 @@ Job fields:
 | `name` | Required. A workspace has at most 200 jobs. |
 | `type` | `url` (default) or `script`. |
 | `cron` | Required. Five-field cron expression, in UTC. |
-| `enabled` | Default `true`. |
+| `enabled` | Default `true`. On a service that sells plans, the plan limits how many jobs are on at once: creating or turning on one more past it answers `402` with `code: "job_limit"`, `limit`, `active`, `plan` and `upgrade_url`. Jobs that are off do not count. |
 | `timeout_ms` | 1000 to 60000. |
 | `url`, `method`, `headers`, `body` | For `url` jobs. `method` is one of GET, POST, PUT, PATCH, DELETE, HEAD. |
 | `script`, `runtime` | For `script` jobs. The script is at most 256 KB; `runtime` must be one `/api/meta` lists. See [scripts.md](scripts.md). |

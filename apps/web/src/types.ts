@@ -110,3 +110,32 @@ export interface AlertChannel {
   created_at: number;
   updated_at: number;
 }
+
+/** GET /api/usage: the workspace's jobs against its limits, and its plan where the service sells plans. */
+export type Usage =
+  | { metered: false; edition: string; jobs: UsageJobs }
+  | {
+    metered: true;
+    edition: string;
+    jobs: UsageJobs;
+    plan: {
+      id: string;
+      name: string;
+      max_active_jobs: number | null;
+      upgrade_url: string | null;
+      manage_url: string | null;
+      cancel_at_period_end: boolean;
+      renews_at: number | null;
+    };
+    offers: PlanOffer[];
+  };
+
+export interface UsageJobs { total: number; active: number; max: number }
+
+export interface PlanOffer {
+  id: string;
+  name: string;
+  price_usd: number;
+  max_active_jobs: number | null;
+  checkout_url: string | null;
+}
